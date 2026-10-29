@@ -1,0 +1,12 @@
+﻿**/bin/
+**/obj/
+**/.vs/
+**/*.csproj.user
+**/*.bak
+**/*.jks
+**/*.keystore
+**/secrets.json
+**/appsettings.Local.json
+**/.env
+**/.env.*
+!**/.env.example

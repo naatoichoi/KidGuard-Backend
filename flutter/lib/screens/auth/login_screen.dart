@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
@@ -6,6 +5,7 @@ import '../child/child_home_screen.dart';
 import '../child/child_pairing_screen.dart';
 import 'otp_screen.dart';
 import 'register_screen.dart';
+import '../common/api_connection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -45,19 +45,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => OtpScreen(
-            userName: _userName.text.trim(),
-          ),
+          builder: (_) => OtpScreen(userName: _userName.text.trim()),
         ),
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -66,12 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _openRegister() async {
-    final userName =
-    await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        builder: (_) => const RegisterScreen(),
-      ),
-    );
+    final userName = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const RegisterScreen()));
 
     if (!mounted || userName == null) return;
 
@@ -82,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
       const SnackBar(
         content: Text(
           'Đăng ký thành công! '
-              'Hãy đăng nhập để nhận OTP.',
+          'Hãy đăng nhập để nhận OTP.',
         ),
       ),
     );
@@ -91,12 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _openChildPairing() async {
     if (_loading) return;
 
-    final paired =
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const ChildPairingScreen(),
-      ),
-    );
+    final paired = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const ChildPairingScreen()));
 
     if (!mounted) return;
 
@@ -104,10 +93,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // Ghép thành công: xóa toàn bộ màn hình
       // đăng nhập và đưa Child vào Home.
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(
-          builder: (_) => const ChildHomeScreen(),
-        ),
-            (route) => false,
+        MaterialPageRoute<void>(builder: (_) => const ChildHomeScreen()),
+        (route) => false,
       );
     }
   }
@@ -115,18 +102,31 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              final changed = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => const ApiConnectionScreen()),
+              );
+              if (changed == true && mounted) _password.clear();
+            },
+            icon: const Icon(Icons.link),
+            label: const Text('Máy chủ'),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
-              constraints:
-              const BoxConstraints(maxWidth: 440),
+              constraints: const BoxConstraints(maxWidth: 440),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Icon(
                       Icons.shield_rounded,
@@ -137,17 +137,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'KidGuard',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineLarge
-                          ?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.headlineLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Đồng hành cùng con '
-                          'trong thế giới số',
+                      'trong thế giới số',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
@@ -157,13 +153,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Tên đăng nhập',
-                        prefixIcon: Icon(
-                          Icons.person_outline,
-                        ),
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
                       validator: (value) {
-                        if (value == null ||
-                            value.trim().isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Nhập tên đăng nhập';
                         }
                         return null;
@@ -180,19 +173,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       decoration: InputDecoration(
                         labelText: 'Mật khẩu',
-                        prefixIcon: const Icon(
-                          Icons.lock_outline,
-                        ),
+                        prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           onPressed: () {
-                            setState(
-                                  () => _obscure = !_obscure,
-                            );
+                            setState(() => _obscure = !_obscure);
                           },
                           icon: Icon(
-                            _obscure
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                            _obscure ? Icons.visibility_off : Icons.visibility,
                           ),
                         ),
                       ),
@@ -209,14 +196,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     FilledButton(
                       onPressed: _loading ? null : _login,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                        ),
-                        child: Text(
-                          _loading
-                              ? 'Đang gửi OTP...'
-                              : 'Đăng nhập',
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(_loading ? 'Đang gửi OTP...' : 'Đăng nhập'),
                       ),
                     ),
 
@@ -224,31 +205,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const Text(
                       'Mã OTP sẽ được gửi '
-                          'đến email phụ huynh.',
+                      'đến email phụ huynh.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: Colors.black54, fontSize: 13),
                     ),
 
                     const SizedBox(height: 12),
 
                     Row(
-                      mainAxisAlignment:
-                      MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Flexible(
-                          child: Text(
-                            'Chưa có tài khoản?',
-                          ),
-                        ),
+                        const Flexible(child: Text('Chưa có tài khoản?')),
                         TextButton(
-                          onPressed:
-                          _loading ? null : _openRegister,
-                          child: const Text(
-                            'Đăng ký ngay',
-                          ),
+                          onPressed: _loading ? null : _openRegister,
+                          child: const Text('Đăng ký ngay'),
                         ),
                       ],
                     ),
@@ -259,9 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Expanded(child: Divider()),
                         Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             'GHÉP THIẾT BỊ',
                             style: TextStyle(
@@ -277,33 +245,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
 
                     OutlinedButton.icon(
-                      onPressed:
-                      _loading ? null : _openChildPairing,
-                      icon: const Icon(
-                        Icons.qr_code_2,
-                      ),
+                      onPressed: _loading ? null : _openChildPairing,
+                      icon: const Icon(Icons.qr_code_2),
                       label: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: 12,
-                        ),
-                        child: Text(
-                          'Tạo mã QR cho thiết bị Child',
-                        ),
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Text('Tạo mã QR cho thiết bị Child'),
                       ),
                     ),
 
                     const SizedBox(height: 12),
 
                     const Text(
-                      'Dùng trên điện thoại của con. '
-                          'Phụ huynh sẽ quét mã QR '
-                          'để liên kết thiết bị. '
-                          'Trẻ không cần tài khoản đăng nhập.',
+                      'Phụ huynh quét QR để tạo tài khoản cho con.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
                     ),
                   ],
                 ),

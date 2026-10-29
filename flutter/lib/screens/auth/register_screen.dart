@@ -44,6 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       await _api.post(
         'Auth/register-parent',
+        authenticated: false,
         body: {
           'fullName': _fullName.text.trim(),
           'userName': _userName.text.trim(),

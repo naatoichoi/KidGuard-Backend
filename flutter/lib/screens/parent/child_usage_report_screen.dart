@@ -1,6 +1,7 @@
-
 import 'package:flutter/material.dart';
+
 import '../../services/api_service.dart';
+import 'screen_time_limits_screen.dart';
 
 class ChildUsageReportScreen extends StatefulWidget {
   final int childId;
@@ -13,12 +14,10 @@ class ChildUsageReportScreen extends StatefulWidget {
   });
 
   @override
-  State<ChildUsageReportScreen> createState() =>
-      _ChildUsageReportScreenState();
+  State<ChildUsageReportScreen> createState() => _ChildUsageReportScreenState();
 }
 
-class _ChildUsageReportScreenState
-    extends State<ChildUsageReportScreen> {
+class _ChildUsageReportScreenState extends State<ChildUsageReportScreen> {
   final ApiService _api = ApiService();
 
   Map<String, dynamic>? _report;
@@ -57,7 +56,7 @@ class _ChildUsageReportScreenState
     try {
       final response = await _api.get(
         'ScreenTime/child/${widget.childId}'
-            '?date=${_dateString(_date)}',
+        '?date=${_dateString(_date)}',
       );
 
       if (!mounted) return;
@@ -102,10 +101,12 @@ class _ChildUsageReportScreenState
           children: [
             Text(
               device['deviceName']?.toString() ?? 'Thiết bị',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Đồng bộ gần nhất: ${DateTime.tryParse(device['lastSyncAt']?.toString() ?? '')?.toLocal().toString().split('.').first ?? 'Chưa đồng bộ'}',
+              style: const TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 8),
             Text(
@@ -125,10 +126,25 @@ class _ChildUsageReportScreenState
                         'Ứng dụng',
                   ),
                   subtitle: Text(
-                    app['packageName']?.toString() ?? '',
+                    '${_number(app['durationMinutes']).toStringAsFixed(1)} phút trong ngày đã chọn',
                   ),
-                  trailing: Text(
-                    '${_number(app['durationMinutes']).toStringAsFixed(1)} phút',
+                  trailing: OutlinedButton(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => ScreenTimeLimitsScreen(
+                            deviceId: (device['deviceId'] as num).toInt(),
+                            deviceName:
+                                device['deviceName']?.toString() ?? 'Thiết bị',
+                            childId: widget.childId,
+                            initialPackageName: app['packageName']?.toString(),
+                          ),
+                        ),
+                      );
+                      if (mounted) await _load();
+                    },
+                    child: const Text('Giới hạn'),
                   ),
                 );
               }),
@@ -147,60 +163,50 @@ class _ChildUsageReportScreenState
       appBar: AppBar(
         title: Text('Sử dụng · ${widget.childName}'),
         actions: [
-          IconButton(
-            onPressed: _load,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(
-        child: Text(
-          _error!,
-          textAlign: TextAlign.center,
-        ),
-      )
+          ? Center(child: Text(_error!, textAlign: TextAlign.center))
           : ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          OutlinedButton.icon(
-            onPressed: _pickDate,
-            icon: const Icon(Icons.calendar_month),
-            label: Text(_dateString(_date)),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            color: const Color(0xFFEAE7FF),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Text('Tổng thời gian sử dụng'),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${_number(_report?['totalMinutes']).toStringAsFixed(1)} phút',
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
+              padding: const EdgeInsets.all(16),
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _pickDate,
+                  icon: const Icon(Icons.calendar_month),
+                  label: Text(_dateString(_date)),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  color: const Color(0xFFEAE7FF),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        const Text('Tổng thời gian sử dụng'),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_number(_report?['totalMinutes']).toStringAsFixed(1)} phút',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+                if (devices.isEmpty)
+                  const Text('Chưa có thiết bị hoặc dữ liệu.')
+                else
+                  ...devices.whereType<Map>().map(
+                    (device) => _deviceCard(Map<String, dynamic>.from(device)),
+                  ),
+              ],
             ),
-          ),
-          const SizedBox(height: 20),
-          if (devices.isEmpty)
-            const Text('Chưa có thiết bị hoặc dữ liệu.')
-          else
-            ...devices.whereType<Map>().map(
-                  (device) => _deviceCard(
-                Map<String, dynamic>.from(device),
-              ),
-            ),
-        ],
-      ),
     );
   }
 }

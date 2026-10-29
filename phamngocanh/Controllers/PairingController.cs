@@ -198,17 +198,25 @@ namespace phamngocanh.Controllers
                 });
             }
 
+            if (await _userManager.FindByNameAsync(dto.UserName.Trim()) != null)
+                return Conflict(new { message = "Tên đăng nhập của trẻ đã tồn tại." });
+
+            if (!await _context.Roles.AnyAsync(r => r.Name == "Child"))
+            {
+                _context.Roles.Add(new IdentityRole("Child") { NormalizedName = "CHILD" });
+                await _context.SaveChangesAsync();
+            }
+
             var childUser = new ApplicationUser
             {
-                UserName = "child_" +
-                    Guid.NewGuid().ToString("N"),
+                UserName = dto.UserName.Trim(),
                 FullName = childName,
                 IsActive = true,
                 CreatedAt = now
             };
 
             var createResult =
-                await _userManager.CreateAsync(childUser);
+                await _userManager.CreateAsync(childUser, dto.Password);
 
             if (!createResult.Succeeded)
             {
@@ -282,6 +290,7 @@ namespace phamngocanh.Controllers
                 message = "Ghép thiết bị thành công.",
                 childId = child.Id,
                 childName = child.FullName,
+                userName = childUser.UserName,
                 device = new
                 {
                     id = device.Id,

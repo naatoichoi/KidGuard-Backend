@@ -442,6 +442,10 @@ namespace phamngocanh.Migrations
                     b.Property<double?>("AccuracyMeters")
                         .HasColumnType("float");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(350)
+                        .HasColumnType("nvarchar(350)");
+
                     b.Property<int>("DeviceId")
                         .HasColumnType("int");
 

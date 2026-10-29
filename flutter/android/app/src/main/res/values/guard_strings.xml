@@ -1,0 +1,4 @@
+<resources>
+    <string name="guard_accessibility_description">KidGuard dùng tên ứng dụng đang mở và thống kê thời gian để thực hiện giới hạn phụ huynh đặt. Hết giờ app: hiển thị màn hình chặn riêng app đó. Hết giờ tổng: khóa màn hình nếu được cấp quyền quản trị thiết bị. Dữ liệu thời gian được gửi tới API gia đình. Không đọc nội dung màn hình hay tin nhắn. Chỉ bật trên máy trẻ với sự đồng ý của phụ huynh.</string>
+    <string name="guard_service_label">KidGuard · Giới hạn của phụ huynh</string>
+</resources>

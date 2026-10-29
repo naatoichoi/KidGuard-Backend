@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
@@ -9,6 +11,8 @@ import 'child_usage_report_screen.dart';
 import 'parent_pairing_screen.dart';
 import 'screen_time_limits_screen.dart';
 import 'time_requests_screen.dart';
+import 'child_account_screen.dart';
+import '../common/api_connection_screen.dart';
 
 class ParentHomeScreen extends StatefulWidget {
   const ParentHomeScreen({super.key});
@@ -18,20 +22,38 @@ class ParentHomeScreen extends StatefulWidget {
 }
 
 class _ParentHomeScreenState extends State<ParentHomeScreen> {
+  Future<void> _changeServer() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const ApiConnectionScreen()),
+    );
+    if (changed == true && mounted) await _logout();
+  }
+
   final ApiService _api = ApiService();
   final AuthService _auth = AuthService();
   Map<String, dynamic>? _dashboard;
   bool _loading = true;
+  bool _fetching = false;
+  Timer? _notificationTimer;
   String? _error;
 
   @override
   void initState() {
     super.initState();
     _loadDashboard();
+    _notificationTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted &&
+          ModalRoute.of(context)?.isCurrent == true &&
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        _loadDashboard(silent: true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _notificationTimer?.cancel();
     _api.dispose();
     super.dispose();
   }
@@ -44,17 +66,21 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   List<Map<String, dynamic>> get _children {
     final raw = _dashboard?['children'];
     if (raw is! List) return [];
-    return raw.whereType<Map>()
+    return raw
+        .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 
-  Future<void> _loadDashboard() async {
-    if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _loadDashboard({bool silent = false}) async {
+    if (!mounted || _fetching) return;
+    _fetching = true;
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final response = await _api.get('Dashboard/parent');
       if (!mounted) return;
@@ -64,10 +90,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (!silent) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
+    } finally {
+      _fetching = false;
     }
   }
 
@@ -76,48 +106,87 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-          (route) => false,
+      (route) => false,
     );
   }
 
   Future<void> _openScreen(Widget screen) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => screen),
-    );
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => screen));
     if (mounted) await _loadDashboard();
   }
 
   void _invalidId() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('ID không hợp lệ.')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('ID không hợp lệ.')));
+  }
+
+  Future<void> _editChildAccount(Map<String, dynamic> child) async {
+    final id = _toInt(child['childId']);
+    if (id <= 0) return _invalidId();
+    try {
+      final children = await _api.get('Children') as List;
+      final profile = children
+          .whereType<Map>()
+          .where((c) => _toInt(c['id']) == id)
+          .firstOrNull;
+      if (!mounted) return;
+      final account = await Navigator.push<Map<String, String>>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChildAccountScreen(
+            existingName: child['childName']?.toString() ?? 'Con',
+            existingUserName: profile?['userName']?.toString(),
+          ),
+        ),
+      );
+      if (account == null) return;
+      await _api.put('Pairing/child/$id/account', body: account);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã lưu tài khoản đăng nhập cho con.')),
+      );
+      await _loadDashboard();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$error')));
+      }
+    }
   }
 
   void _openLocation(Map<String, dynamic> child) {
     final id = _toInt(child['childId']);
     if (id <= 0) return _invalidId();
-    _openScreen(ChildLocationMapScreen(
-      childId: id,
-      childName: child['childName']?.toString() ?? 'Child',
-    ));
+    _openScreen(
+      ChildLocationMapScreen(
+        childId: id,
+        childName: child['childName']?.toString() ?? 'Child',
+      ),
+    );
   }
 
   void _openUsageReport(Map<String, dynamic> child) {
     final id = _toInt(child['childId']);
     if (id <= 0) return _invalidId();
-    _openScreen(ChildUsageReportScreen(
-      childId: id,
-      childName: child['childName']?.toString() ?? 'Child',
-    ));
+    _openScreen(
+      ChildUsageReportScreen(
+        childId: id,
+        childName: child['childName']?.toString() ?? 'Child',
+      ),
+    );
   }
 
   void _openLimits(Map<String, dynamic> device) {
     final id = _toInt(device['deviceId']);
     if (id <= 0) return _invalidId();
-    _openScreen(ScreenTimeLimitsScreen(
-      deviceId: id,
-      deviceName: device['deviceName']?.toString() ?? 'Thiết bị',
-    ));
+    _openScreen(
+      ScreenTimeLimitsScreen(
+        deviceId: id,
+        deviceName: device['deviceName']?.toString() ?? 'Thiết bị',
+        childId: _toInt(device['childId']),
+      ),
+    );
   }
 
   Widget _statCard(String title, int value, IconData icon, Color color) {
@@ -134,13 +203,15 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 10),
-          Text('$value', style: const TextStyle(
-            fontSize: 27, fontWeight: FontWeight.bold,
-          )),
+          Text(
+            '$value',
+            style: const TextStyle(fontSize: 27, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 4),
-          Text(title, style: const TextStyle(
-            fontSize: 13, color: Colors.black54,
-          )),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
+          ),
         ],
       ),
     );
@@ -154,7 +225,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     final extra = _toInt(device['extraMinutes']);
     final exceeded = limit != null && limit > 0 && used >= limit;
     final progress = limit == null || limit <= 0
-        ? 0.0 : (used / limit).clamp(0.0, 1.0).toDouble();
+        ? 0.0
+        : (used / limit).clamp(0.0, 1.0).toDouble();
     return Container(
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(16),
@@ -165,19 +237,32 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const Icon(Icons.smartphone, color: Color(0xFF6254D9)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(
-              device['deviceName']?.toString() ?? 'Thiết bị',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            )),
-          ]),
+          Row(
+            children: [
+              const Icon(Icons.smartphone, color: Color(0xFF6254D9)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  device['deviceName']?.toString() ?? 'Thiết bị',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Text('Đã sử dụng'),
-            Text('$used phút', style: const TextStyle(fontWeight: FontWeight.bold)),
-          ]),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Đã sử dụng'),
+              Text(
+                '$used phút',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           LinearProgressIndicator(
             value: progress,
@@ -188,28 +273,36 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           ),
           const SizedBox(height: 12),
           if (limit == null || limit <= 0)
-            const Text('Chưa có giới hạn tổng thời gian đang áp dụng.',
-                style: TextStyle(color: Colors.black54))
+            const Text(
+              'Chưa có giới hạn tổng thời gian đang áp dụng.',
+              style: TextStyle(color: Colors.black54),
+            )
           else ...[
             Text('Giới hạn: $limit phút'),
             const SizedBox(height: 5),
-            Text(exceeded ? 'Đã đạt hoặc vượt giới hạn'
-                : 'Còn lại: $remaining phút',
-                style: TextStyle(
-                  color: exceeded ? Colors.red : Colors.green.shade700,
-                  fontWeight: FontWeight.w600,
-                )),
+            Text(
+              exceeded
+                  ? 'Đã đạt hoặc vượt giới hạn'
+                  : 'Còn lại: $remaining phút',
+              style: TextStyle(
+                color: exceeded ? Colors.red : Colors.green.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             if (extra > 0) ...[
               const SizedBox(height: 5),
               Text('Đã cộng thêm: $extra phút'),
             ],
           ],
           const SizedBox(height: 16),
-          SizedBox(width: double.infinity, child: OutlinedButton.icon(
-            onPressed: () => _openLimits(device),
-            icon: const Icon(Icons.settings_outlined),
-            label: const Text('Thiết lập giới hạn'),
-          )),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _openLimits(device),
+              icon: const Icon(Icons.settings_outlined),
+              label: const Text('Thiết lập giới hạn'),
+            ),
+          ),
         ],
       ),
     );
@@ -227,37 +320,58 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              const CircleAvatar(
-                radius: 24,
-                backgroundColor: Color(0xFFEAE7FF),
-                child: Icon(Icons.child_care, color: Color(0xFF6254D9)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold,
-                  )),
-                  const SizedBox(height: 4),
-                  Text('Đã dùng: $used phút',
-                      style: const TextStyle(color: Colors.black54)),
-                ],
-              )),
-            ]),
+            Row(
+              children: [
+                const CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Color(0xFFEAE7FF),
+                  child: Icon(Icons.child_care, color: Color(0xFF6254D9)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Đã dùng: $used phút',
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Tài khoản đăng nhập của con',
+                  icon: const Icon(Icons.manage_accounts_outlined),
+                  onPressed: () => _editChildAccount(child),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            SizedBox(width: double.infinity, child: FilledButton.icon(
-              onPressed: () => _openUsageReport(child),
-              icon: const Icon(Icons.bar_chart),
-              label: const Text('Xem thống kê sử dụng'),
-            )),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _openUsageReport(child),
+                icon: const Icon(Icons.bar_chart),
+                label: const Text('Xem thống kê sử dụng'),
+              ),
+            ),
             const SizedBox(height: 10),
-            SizedBox(width: double.infinity, child: OutlinedButton.icon(
-              onPressed: () => _openLocation(child),
-              icon: const Icon(Icons.location_on_outlined),
-              label: const Text('Xem vị trí GPS'),
-            )),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openLocation(child),
+                icon: const Icon(Icons.location_on_outlined),
+                label: const Text('Xem vị trí GPS'),
+              ),
+            ),
             const SizedBox(height: 12),
             if (devices.isEmpty)
               const Padding(
@@ -265,8 +379,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 child: Text('Chưa có thiết bị được liên kết.'),
               )
             else
-              ...devices.whereType<Map>().map((device) =>
-                  _deviceCard(Map<String, dynamic>.from(device))),
+              ...devices.whereType<Map>().map(
+                (device) => _deviceCard({
+                  ...Map<String, dynamic>.from(device),
+                  'childId': child['childId'],
+                }),
+              ),
           ],
         ),
       ),
@@ -283,11 +401,16 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('Tổng quan gia đình', style: Theme.of(context)
-              .textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'Tổng quan gia đình',
+            style: Theme.of(context).textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 6),
-          Text('Ngày ${data['date'] ?? ''}',
-              style: const TextStyle(color: Colors.black54)),
+          Text(
+            'Ngày ${data['date'] ?? ''}',
+            style: const TextStyle(color: Colors.black54),
+          ),
           const SizedBox(height: 20),
           GridView.count(
             crossAxisCount: 2,
@@ -297,55 +420,82 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _statCard('Trẻ em', _toInt(data['totalChildren']),
-                  Icons.family_restroom, Colors.blue),
-              _statCard('Thiết bị', _toInt(data['totalDevices']),
-                  Icons.devices, Colors.purple),
-              _statCard('Chờ duyệt', pending,
-                  Icons.schedule, Colors.orange),
-              _statCard('Thông báo mới', unread,
-                  Icons.notifications_outlined, Colors.red),
+              _statCard(
+                'Trẻ em',
+                _toInt(data['totalChildren']),
+                Icons.family_restroom,
+                Colors.blue,
+              ),
+              _statCard(
+                'Thiết bị',
+                _toInt(data['totalDevices']),
+                Icons.devices,
+                Colors.purple,
+              ),
+              _statCard('Chờ duyệt', pending, Icons.schedule, Colors.orange),
+              _statCard(
+                'Thông báo mới',
+                unread,
+                Icons.notifications_outlined,
+                Colors.red,
+              ),
             ],
           ),
           const SizedBox(height: 20),
           Card(
             color: const Color(0xFFEAE7FF),
-            child: Column(children: [
-              ListTile(
-                leading: const Icon(Icons.qr_code_scanner,
-                    color: Color(0xFF6254D9)),
-                title: const Text('Ghép thiết bị bằng QR',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Quét mã QR trên thiết bị Child'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _openScreen(
-                  ParentPairingScreen(children: _children),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(
+                    Icons.qr_code_scanner,
+                    color: Color(0xFF6254D9),
+                  ),
+                  title: const Text(
+                    'Thêm con bằng QR',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    'Quét QR trên máy trẻ, tạo tài khoản riêng cho con',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      _openScreen(ParentPairingScreen(children: _children)),
                 ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.pending_actions,
-                    color: Color(0xFF6254D9)),
-                title: const Text('Yêu cầu thêm thời gian',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(pending > 0
-                    ? '$pending yêu cầu đang chờ'
-                    : 'Xem yêu cầu và lịch sử phê duyệt'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _openScreen(const TimeRequestsScreen()),
-              ),
-            ]),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(
+                    Icons.pending_actions,
+                    color: Color(0xFF6254D9),
+                  ),
+                  title: const Text(
+                    'Yêu cầu thêm thời gian',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    pending > 0
+                        ? '$pending yêu cầu đang chờ'
+                        : 'Xem yêu cầu và lịch sử phê duyệt',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _openScreen(const TimeRequestsScreen()),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 28),
-          const Text('Danh sách con', style: TextStyle(
-            fontSize: 20, fontWeight: FontWeight.bold,
-          )),
+          const Text(
+            'Danh sách con',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 14),
           if (children.isEmpty)
-            const Card(child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('Chưa có Child được liên kết với tài khoản.'),
-            ))
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Chưa có Child được liên kết với tài khoản.'),
+              ),
+            )
           else
             ...children.map(_childCard),
         ],
@@ -354,20 +504,25 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   Widget _errorView() {
-    return Center(child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.error_outline, size: 52, color: Colors.redAccent),
-        const SizedBox(height: 16),
-        Text(_error ?? 'Đã xảy ra lỗi.', textAlign: TextAlign.center),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _loadDashboard,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Thử lại'),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 52, color: Colors.redAccent),
+            const SizedBox(height: 16),
+            Text(_error ?? 'Đã xảy ra lỗi.', textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _loadDashboard,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Thử lại'),
+            ),
+          ],
         ),
-      ]),
-    ));
+      ),
+    );
   }
 
   @override
@@ -375,37 +530,54 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     final unread = _toInt(_dashboard?['unreadNotifications']);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('KidGuard · Phụ huynh',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Phụ huynh',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
-          Stack(alignment: Alignment.center, children: [
-            IconButton(
-              onPressed: () => _openScreen(const NotificationsScreen()),
-              icon: const Icon(Icons.notifications_outlined),
-              tooltip: 'Thông báo',
-            ),
-            if (unread > 0)
-              Positioned(
-                right: 7, top: 7,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(unread > 99 ? '99+' : '$unread',
+          IconButton(
+            tooltip: 'Máy chủ',
+            onPressed: _changeServer,
+            icon: const Icon(Icons.link),
+          ),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                onPressed: () => _openScreen(const NotificationsScreen()),
+                icon: const Icon(Icons.notifications_outlined),
+                tooltip: 'Thông báo',
+              ),
+              if (unread > 0)
+                Positioned(
+                  right: 7,
+                  top: 7,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      unread > 99 ? '99+' : '$unread',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
-                      )),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-          ]),
-          IconButton(onPressed: _loadDashboard,
-              icon: const Icon(Icons.refresh)),
-          IconButton(onPressed: _logout,
-              icon: const Icon(Icons.logout)),
+            ],
+          ),
+          IconButton(
+            onPressed: _loadDashboard,
+            icon: const Icon(Icons.refresh),
+          ),
+          IconButton(onPressed: _logout, icon: const Icon(Icons.logout)),
         ],
       ),
       body: _loading

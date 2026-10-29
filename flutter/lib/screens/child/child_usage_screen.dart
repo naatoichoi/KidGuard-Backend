@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:usage_stats/usage_stats.dart';
+
+import '../../services/guard_service.dart';
 
 import '../../services/api_service.dart';
 import '../../services/child_auth_service.dart';
@@ -17,8 +18,7 @@ class ChildUsageScreen extends StatefulWidget {
   });
 
   @override
-  State<ChildUsageScreen> createState() =>
-      _ChildUsageScreenState();
+  State<ChildUsageScreen> createState() => _ChildUsageScreenState();
 }
 
 class _ChildUsageScreenState extends State<ChildUsageScreen>
@@ -75,7 +75,14 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
   }
 
   String _appName(String packageName) {
-    return _knownApps[packageName] ?? packageName;
+    final label = _apps
+        .where((app) => app['packageName'] == packageName)
+        .firstOrNull?['appName']
+        ?.toString()
+        .trim();
+    return label == null || label.isEmpty
+        ? (_knownApps[packageName] ?? packageName)
+        : label;
   }
 
   Future<void> _initialize() async {
@@ -93,10 +100,7 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
 
     if (!mounted) return;
 
-    _timer = Timer.periodic(
-      const Duration(seconds: 15),
-          (_) => _readAndSync(),
-    );
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _readAndSync());
 
     setState(() {
       _loading = false;
@@ -104,7 +108,7 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
   }
 
   Future<void> _requestUsagePermission() async {
-    await UsageStats.grantUsagePermission();
+    await GuardService.openSettings('usage');
   }
 
   Future<void> _loadLimits() async {
@@ -116,17 +120,19 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
       }
 
       final response = await _api.get(
-        'ScreenTimeLimits/device/${widget.deviceId}',
+        'ScreenTime/limits/status/${widget.deviceId}',
       );
 
       if (!mounted) return;
 
       setState(() {
-        _limits = (response as List)
+        _limits = ((response as Map)['limits'] as List)
             .map(
-              (item) =>
-          Map<String, dynamic>.from(item as Map),
-        )
+              (item) => {
+                ...Map<String, dynamic>.from(item as Map),
+                'isEnabled': true,
+              },
+            )
             .toList();
       });
     } catch (e) {
@@ -142,77 +148,69 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
     if (_busy || !mounted) return;
     _busy = true;
     try {
-      final allowed = await UsageStats.checkUsagePermission();
+      final allowed = (await GuardService.status())['usageAccess'] == true;
       if (allowed != true) {
-        if (mounted) setState(() {
-          _hasPermission = false;
-          _error = 'Chưa cấp quyền Usage Access cho KidGuard trên máy Child.';
-        });
+        if (mounted) {
+          setState(() {
+            _hasPermission = false;
+            _error = 'Chưa cấp quyền Usage Access cho KidGuard trên máy Child.';
+          });
+        }
         return;
       }
 
-      final now = DateTime.now();
-      final start = DateTime(now.year, now.month, now.day);
-      final usageList = await UsageStats.queryUsageStats(start, now);
-      final durations = <String, int>{};
-      for (final usage in usageList) {
-        final packageName = usage.packageName;
-        if (packageName == null || packageName.isEmpty) continue;
-        final milliseconds =
-            int.tryParse(usage.totalTimeInForeground ?? '0') ?? 0;
-        if (milliseconds <= 0) continue;
-        durations[packageName] =
-            (durations[packageName] ?? 0) + milliseconds;
-      }
-
-      final apps = durations.entries.map((entry) => <String, dynamic>{
-        'packageName': entry.key,
-        'appName': _appName(entry.key),
-        'durationSeconds': entry.value ~/ 1000,
-      }).where((app) => _toInt(app['durationSeconds']) > 0).toList();
-      apps.sort((a, b) => _toInt(b['durationSeconds'])
-          .compareTo(_toInt(a['durationSeconds'])));
-
+      final snapshot = await GuardService.usageSnapshot();
+      final apps = (snapshot['apps'] as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
       if (!mounted) return;
       setState(() {
         _hasPermission = true;
         _apps = apps;
         _error = apps.isEmpty
             ? 'Android chưa trả về thời gian sử dụng hôm nay. '
-            'Hãy mở YouTube trên Pixel 7, quay lại và bấm Đồng bộ ngay.'
+                  'Hãy dùng một ứng dụng rồi quay lại để đồng bộ.'
             : null;
       });
       if (apps.isEmpty) return;
 
       final total = apps.fold<int>(
-          0, (sum, app) => sum + _toInt(app['durationSeconds']));
+        0,
+        (sum, app) => sum + _toInt(app['durationSeconds']),
+      );
       if (total > 86400) {
-        if (mounted) setState(() => _error =
-        'Android trả về tổng thời gian trên 24 giờ; backend từ chối đồng bộ.');
+        if (mounted) {
+          setState(
+            () => _error = 'Android trả về tổng thời gian trên 24 giờ; backend từ chối đồng bộ.',
+          );
+        }
         return;
       }
 
       final refreshed = await _auth.refreshToken();
       if (!refreshed) throw Exception('Không xác thực được tài khoản Child.');
 
-      // Backend hiện đang quy ước ngày theo UTC.
-      final utc = DateTime.now().toUtc();
-      final usageDate = '${utc.year.toString().padLeft(4, '0')}-'
-          '${utc.month.toString().padLeft(2, '0')}-'
-          '${utc.day.toString().padLeft(2, '0')}';
-      await _api.post('ScreenTime/sync', body: {
-        'deviceId': widget.deviceId,
-        'usageDate': usageDate,
-        'apps': apps,
-      });
-      if (mounted) setState(() {
-        _lastSync = DateTime.now();
-        _error = null;
-      });
+      final usageDate = snapshot['usageDate'];
+      await _api.post(
+        'ScreenTime/sync',
+        body: {
+          'deviceId': widget.deviceId,
+          'usageDate': usageDate,
+          'apps': apps,
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _lastSync = DateTime.now();
+          _error = null;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = 'Đọc hoặc đồng bộ thất bại: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Đọc hoặc đồng bộ thất bại: $e';
+        });
+      }
     } finally {
       _busy = false;
     }
@@ -221,22 +219,14 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
   int get _totalSeconds {
     return _apps.fold<int>(
       0,
-          (sum, app) =>
-      sum + _toInt(app['durationSeconds']),
+      (sum, app) => sum + _toInt(app['durationSeconds']),
     );
   }
 
   int _usedSecondsFor(String packageName) {
     return _apps
-        .where(
-          (app) =>
-      app['packageName'] == packageName,
-    )
-        .fold<int>(
-      0,
-          (sum, app) =>
-      sum + _toInt(app['durationSeconds']),
-    );
+        .where((app) => app['packageName'] == packageName)
+        .fold<int>(0, (sum, app) => sum + _toInt(app['durationSeconds']));
   }
 
   String _formatDuration(int seconds) {
@@ -255,19 +245,14 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
     return '$remaining giây';
   }
 
-  Widget _buildLimitCard(
-      Map<String, dynamic> limit,
-      ) {
-    final type = limit['limitType']
-        ?.toString()
-        .toUpperCase() ??
-        '';
+  Widget _buildLimitCard(Map<String, dynamic> limit) {
+    final type = limit['limitType']?.toString().toUpperCase() ?? '';
 
-    final packageName =
-        limit['packageName']?.toString() ?? '';
+    final packageName = limit['packageName']?.toString() ?? '';
 
-    final minutes =
-    _toInt(limit['dailyLimitMinutes']);
+    final minutes = _toInt(
+      limit['effectiveLimitMinutes'] ?? limit['dailyLimitMinutes'],
+    );
 
     final enabled = limit['isEnabled'] == true;
 
@@ -278,9 +263,7 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
     final maxSeconds = minutes * 60;
 
     final progress = maxSeconds > 0
-        ? (usedSeconds / maxSeconds)
-        .clamp(0.0, 1.0)
-        .toDouble()
+        ? (usedSeconds / maxSeconds).clamp(0.0, 1.0).toDouble()
         : 0.0;
 
     final remaining = maxSeconds - usedSeconds;
@@ -290,58 +273,44 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor:
-                  const Color(0xFFEAE7FF),
+                  backgroundColor: const Color(0xFFEAE7FF),
                   child: Icon(
-                    type == 'TOTAL'
-                        ? Icons.timer_outlined
-                        : Icons.apps,
+                    type == 'TOTAL' ? Icons.timer_outlined : Icons.apps,
                     color: const Color(0xFF6254D9),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         type == 'TOTAL'
                             ? 'Tổng thời gian sử dụng'
                             : _appName(packageName),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Text('$minutes phút/ngày'),
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.lock_outline,
-                  color: Colors.grey,
-                ),
+                const Icon(Icons.lock_outline, color: Colors.grey),
               ],
             ),
             const SizedBox(height: 14),
-            Text(
-              'Đã dùng: ${_formatDuration(usedSeconds)}',
-            ),
+            Text('Đã dùng: ${_formatDuration(usedSeconds)}'),
             const SizedBox(height: 8),
             LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              borderRadius:
-              BorderRadius.circular(10),
-              color: enabled &&
-                  usedSeconds >= maxSeconds
+              borderRadius: BorderRadius.circular(10),
+              color: enabled && usedSeconds >= maxSeconds
                   ? Colors.red
                   : const Color(0xFF6254D9),
             ),
@@ -354,10 +323,7 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
                   : 'Đã hết thời gian sử dụng',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: enabled &&
-                    remaining <= 0
-                    ? Colors.red
-                    : Colors.black54,
+                color: enabled && remaining <= 0 ? Colors.red : Colors.black54,
               ),
             ),
           ],
@@ -378,12 +344,8 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
           Text(
             widget.deviceName,
             textAlign: TextAlign.center,
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Card(
@@ -408,55 +370,41 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
             ),
           ),
           const SizedBox(height: 12),
-          const Text('Dữ liệu sử dụng thực tế do Android ghi nhận',
-              textAlign: TextAlign.center),
           const SizedBox(height: 12),
           if (!_hasPermission)
             FilledButton.icon(
               onPressed: _requestUsagePermission,
               icon: const Icon(Icons.settings),
-              label: const Text(
-                'Cấp quyền thời gian sử dụng',
-              ),
+              label: const Text('Cấp quyền thời gian sử dụng'),
             ),
           if (_lastSync != null)
             Text(
               'Đã đồng bộ lúc '
-                  '${_lastSync!.hour.toString().padLeft(2, '0')}:'
-                  '${_lastSync!.minute.toString().padLeft(2, '0')}',
+              '${_lastSync!.hour.toString().padLeft(2, '0')}:'
+              '${_lastSync!.minute.toString().padLeft(2, '0')}',
               textAlign: TextAlign.center,
             ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(
-              _error!,
-              style: const TextStyle(
-                color: Colors.red,
-              ),
-            ),
+            Text(_error!, style: const TextStyle(color: Colors.red)),
           ],
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _readAndSync,
             icon: const Icon(Icons.sync),
-            label: const Text('Đồng bộ ngay'),
+            label: const Text('Đồng bộ danh sách & thời gian'),
           ),
           const SizedBox(height: 24),
           const Text(
             'Giới hạn phụ huynh đã đặt',
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           if (_limits.isEmpty)
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(18),
-                child: Text(
-                  'Chưa tải được giới hạn.',
-                ),
+                child: Text('Chưa có giới hạn đang bật.'),
               ),
             )
           else
@@ -464,29 +412,18 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
           const SizedBox(height: 24),
           const Text(
             'Danh sách ứng dụng',
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           ..._apps.map((app) {
-            final packageName =
-                app['packageName']?.toString() ?? '';
+            final packageName = app['packageName']?.toString() ?? '';
 
             return Card(
               child: ListTile(
-                leading: const Icon(
-                  Icons.apps,
-                  color: Color(0xFF6254D9),
-                ),
+                leading: const Icon(Icons.apps, color: Color(0xFF6254D9)),
                 title: Text(_appName(packageName)),
                 subtitle: Text(packageName),
-                trailing: Text(
-                  _formatDuration(
-                    _toInt(app['durationSeconds']),
-                  ),
-                ),
+                trailing: Text(_formatDuration(_toInt(app['durationSeconds']))),
               ),
             );
           }),
@@ -501,16 +438,11 @@ class _ChildUsageScreenState extends State<ChildUsageScreen>
       appBar: AppBar(
         title: const Text('Thời gian sử dụng'),
         actions: [
-          IconButton(
-            onPressed: _initialize,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _initialize, icon: const Icon(Icons.refresh)),
         ],
       ),
       body: _loading
-          ? const Center(
-        child: CircularProgressIndicator(),
-      )
+          ? const Center(child: CircularProgressIndicator())
           : _buildUsageView(),
     );
   }

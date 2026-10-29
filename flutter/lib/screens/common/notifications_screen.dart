@@ -1,18 +1,16 @@
-
 import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
+import '../parent/child_location_map_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() =>
-      _NotificationsScreenState();
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState
-    extends State<NotificationsScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen> {
   final ApiService _api = ApiService();
 
   List<Map<String, dynamic>> _notifications = [];
@@ -41,9 +39,7 @@ class _NotificationsScreenState
     return notification['isRead'] == true;
   }
 
-  List<Map<String, dynamic>> _parseNotifications(
-      dynamic response,
-      ) {
+  List<Map<String, dynamic>> _parseNotifications(dynamic response) {
     if (response is List) {
       return response
           .whereType<Map>()
@@ -89,9 +85,7 @@ class _NotificationsScreenState
     }
   }
 
-  Future<void> _markAsRead(
-      Map<String, dynamic> notification,
-      ) async {
+  Future<void> _markAsRead(Map<String, dynamic> notification) async {
     final id = _toInt(notification['id']);
 
     if (id <= 0 || _isRead(notification)) return;
@@ -112,11 +106,9 @@ class _NotificationsScreenState
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Không thể đánh dấu đã đọc: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể đánh dấu đã đọc: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -134,8 +126,7 @@ class _NotificationsScreenState
 
     final local = date.toLocal();
 
-    String twoDigits(int number) =>
-        number.toString().padLeft(2, '0');
+    String twoDigits(int number) => number.toString().padLeft(2, '0');
 
     return '${twoDigits(local.hour)}:'
         '${twoDigits(local.minute)} '
@@ -147,8 +138,7 @@ class _NotificationsScreenState
   IconData _notificationIcon(String type) {
     final value = type.toUpperCase();
 
-    if (value.contains('TIME') ||
-        value.contains('LIMIT')) {
+    if (value.contains('TIME') || value.contains('LIMIT')) {
       return Icons.access_time;
     }
 
@@ -163,36 +153,44 @@ class _NotificationsScreenState
     return Icons.notifications_outlined;
   }
 
-  Widget _notificationCard(
-      Map<String, dynamic> notification,
-      ) {
+  Widget _notificationCard(Map<String, dynamic> notification) {
     final id = _toInt(notification['id']);
     final isRead = _isRead(notification);
     final processing = _processingIds.contains(id);
 
-    final title =
-        notification['title']?.toString() ?? 'Thông báo';
+    final title = notification['title']?.toString() ?? 'Thông báo';
 
-    final message =
-        notification['message']?.toString() ?? '';
+    final message = notification['message']?.toString() ?? '';
 
-    final type =
-        notification['type']?.toString() ?? '';
+    final type = notification['type']?.toString() ?? '';
 
-    final createdAt = _formatDate(
-      notification['createdAt'],
-    );
+    final createdAt = _formatDate(notification['createdAt']);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: isRead
-          ? Colors.white
-          : const Color(0xFFF0EDFF),
+      color: isRead ? Colors.white : const Color(0xFFF0EDFF),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: isRead || processing
+        onTap: processing
             ? null
-            : () => _markAsRead(notification),
+            : () async {
+                if (!isRead) await _markAsRead(notification);
+                if (!mounted) return;
+                if (type == 'LOCATION_SHARED') {
+                  final childId = _toInt(notification['referenceId']);
+                  if (childId > 0) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => ChildLocationMapScreen(
+                          childId: childId,
+                          childName: 'Con',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -210,8 +208,7 @@ class _NotificationsScreenState
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -271,9 +268,7 @@ class _NotificationsScreenState
   }
 
   Widget _buildContent() {
-    final unreadCount = _notifications
-        .where((item) => !_isRead(item))
-        .length;
+    final unreadCount = _notifications.where((item) => !_isRead(item)).length;
 
     return RefreshIndicator(
       onRefresh: _loadNotifications,
@@ -282,9 +277,7 @@ class _NotificationsScreenState
         children: [
           Text(
             'Thông báo của bạn',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
+            style: Theme.of(context).textTheme.headlineSmall
                 ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -292,9 +285,7 @@ class _NotificationsScreenState
             unreadCount > 0
                 ? '$unreadCount thông báo chưa đọc'
                 : 'Bạn đã đọc tất cả thông báo',
-            style: const TextStyle(
-              color: Colors.black54,
-            ),
+            style: const TextStyle(color: Colors.black54),
           ),
           const SizedBox(height: 20),
           if (_notifications.isEmpty)
@@ -335,29 +326,24 @@ class _NotificationsScreenState
         ],
       ),
       body: _loading
-          ? const Center(
-        child: CircularProgressIndicator(),
-      )
+          ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _loadNotifications,
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _loadNotifications,
-                child: const Text('Thử lại'),
-              ),
-            ],
-          ),
-        ),
-      )
+            )
           : _buildContent(),
     );
   }

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <BackendRoot Condition="'$(BackendRoot)' == ''">$(MSBuildThisFileDirectory)../../phamngocanh</BackendRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" PrivateAssets="all" />
+    <Compile Include="$(BackendRoot)/Models/*.cs" Exclude="$(BackendRoot)/Models/Location.cs" Link="Models/%(Filename)%(Extension)" />
+    <Compile Include="$(BackendRoot)/Models/Location.cs" Link="Models/Location.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
+    <Compile Remove="LocationAddressModel.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
+    <Compile Include="$(BackendRoot)/Data/ApplicationDbContext.cs" Link="ApplicationDbContext.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/SetScreenTimeLimitDto.cs" Link="SetScreenTimeLimitDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/CreatePairingCodeDto.cs" Link="CreatePairingCodeDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/PairingStatusDto.cs" Link="PairingStatusDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/RefreshChildTokenDto.cs" Link="RefreshChildTokenDto.cs" />
+    <Compile Include="$(BackendRoot)/Services/JwtService.cs" Link="JwtService.cs" />
+    <Compile Remove="ScreenTimeLimitsController.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
+    <Compile Include="$(BackendRoot)/Controllers/ScreenTimeLimitsController.cs" Link="ScreenTimeLimitsController.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
+    <Compile Remove="PairingController.cs;ConfirmPairingDto.cs" />
+    <Compile Remove="ChildSessionController.cs" Condition="'$(UseStagedSession)' != 'true'" />
+    <Compile Include="$(BackendRoot)/Controllers/PairingController.cs" Link="PairingController.cs" />
+    <Compile Include="$(BackendRoot)/Controllers/ChildSessionController.cs" Link="ChildSessionController.cs" Condition="'$(UseStagedSession)' != 'true'" />
+    <Compile Include="$(BackendRoot)/DTOs/ConfirmPairingDto.cs" Link="ConfirmPairingDto.cs" />
+    <Compile Remove="LocationsController.cs;SyncLocationDto.cs;DeviceAppsController.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
+    <Compile Include="$(BackendRoot)/Controllers/LocationsController.cs" Link="LocationsController.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
+    <Compile Include="$(BackendRoot)/Controllers/DeviceAppsController.cs" Link="DeviceAppsController.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
+    <Compile Include="$(BackendRoot)/DTOs/SyncLocationDto.cs" Link="SyncLocationDto.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
+  </ItemGroup>
+</Project>

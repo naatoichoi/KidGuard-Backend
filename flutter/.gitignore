@@ -46,3 +46,12 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Android intermediate output and backend review test output
+/android/build/
+**/bin/
+**/obj/
+/backend-review/*.original.txt
+**/.env
+**/.env.*
+!**/.env.example

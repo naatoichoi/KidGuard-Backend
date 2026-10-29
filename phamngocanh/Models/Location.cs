@@ -34,5 +34,8 @@ namespace phamngocanh.Models
         [Required]
         [MaxLength(20)]
         public string Source { get; set; } = "FUSED";
+
+        [MaxLength(350)]
+        public string? Address { get; set; }
     }
 }

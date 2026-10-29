@@ -65,16 +65,34 @@ namespace phamngocanh.Controllers
                 AccuracyMeters = dto.AccuracyMeters,
                 RecordedAt = recordedAt,
                 ReceivedAt = now,
-                Source = source
+                Source = source,
+                Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim()
             };
 
             _context.Locations.Add(location);
             device.LastSyncAt = now;
+            if (dto.NotifyParents)
+            {
+                var parentIds = await _context.ParentChildren.AsNoTracking()
+                    .Where(pc => pc.ChildId == child.Id && pc.IsActive && pc.Parent.IsActive)
+                    .Select(pc => pc.ParentId).Distinct().ToListAsync();
+                var address = string.IsNullOrWhiteSpace(dto.Address)
+                    ? $"Tọa độ {dto.Latitude.Value:F6}, {dto.Longitude.Value:F6} (chưa tra được địa chỉ)"
+                    : dto.Address.Trim();
+                var text = $"{child.FullName} đã gửi vị trí: {address}. Ghi nhận {recordedAt:HH:mm dd/MM/yyyy} UTC. Mở bản đồ để xem vị trí.";
+                foreach (var parentId in parentIds)
+                    _context.Notifications.Add(new Notification {
+                        UserId = parentId, Title = "Con đã chia sẻ vị trí", Type = "LOCATION_SHARED",
+                        Message = text.Length > 500 ? text[..500] : text,
+                        ReferenceId = child.Id, CreatedAt = now
+                    });
+            }
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
-                message = "Đồng bộ vị trí thành công.",
+                message = dto.NotifyParents ? "Đã gửi vị trí và thông báo cho phụ huynh." : "Đã cập nhật vị trí.",
+                address = dto.Address,
                 location = new
                 {
                     location.Id,
@@ -84,7 +102,8 @@ namespace phamngocanh.Controllers
                     location.AccuracyMeters,
                     location.RecordedAt,
                     location.ReceivedAt,
-                    location.Source
+                    location.Source,
+                    location.Address
                 }
             });
         }
@@ -111,7 +130,8 @@ namespace phamngocanh.Controllers
                     l.AccuracyMeters,
                     l.RecordedAt,
                     l.ReceivedAt,
-                    l.Source
+                    l.Source,
+                    l.Address
                 })
                 .FirstOrDefaultAsync();
 
@@ -163,7 +183,8 @@ namespace phamngocanh.Controllers
                     l.AccuracyMeters,
                     l.RecordedAt,
                     l.ReceivedAt,
-                    l.Source
+                    l.Source,
+                    l.Address
                 })
                 .ToListAsync();
 

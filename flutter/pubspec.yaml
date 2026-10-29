@@ -42,10 +42,10 @@ dependencies:
   mobile_scanner: ^7.4.2
   qr_flutter: ^4.1.0
   geolocator: ^14.1.2
-  google_maps_flutter: ^2.19.0
+  flutter_map: ^8.3.2
+  latlong2: ^0.9.1
   permission_handler: ^13.0.2
   device_info_plus: ^13.3.0
-  usage_stats: ^2.0.1
 
 dev_dependencies:
   flutter_test:

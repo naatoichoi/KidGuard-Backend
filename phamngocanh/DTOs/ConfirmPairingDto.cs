@@ -14,5 +14,18 @@ namespace phamngocanh.DTOs
         [Required(ErrorMessage = "Vui lòng nhập tên trẻ em.")]
         [MaxLength(100, ErrorMessage = "Tên trẻ em tối đa 100 ký tự.")]
         public string ChildName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50, MinimumLength = 3)]
+        [RegularExpression(@"^[a-zA-Z0-9._@+\-]+$")]
+        public string UserName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100, MinimumLength = 6)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required]
+        [Compare(nameof(Password), ErrorMessage = "Mật khẩu xác nhận không khớp.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

@@ -1,30 +1,24 @@
-
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../services/api_service.dart';
+import 'child_account_screen.dart';
 
 class ParentPairingScreen extends StatefulWidget {
   // Giữ tham số này để không phải sửa ParentHomeScreen.
   final List<Map<String, dynamic>> children;
 
-  const ParentPairingScreen({
-    super.key,
-    this.children = const [],
-  });
+  const ParentPairingScreen({super.key, this.children = const []});
 
   @override
-  State<ParentPairingScreen> createState() =>
-      _ParentPairingScreenState();
+  State<ParentPairingScreen> createState() => _ParentPairingScreenState();
 }
 
 class _ParentPairingScreenState extends State<ParentPairingScreen> {
   final ApiService _api = ApiService();
-  final MobileScannerController _scanner =
-  MobileScannerController();
+  final MobileScannerController _scanner = MobileScannerController();
 
-  final TextEditingController _codeController =
-  TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
 
   bool _processing = false;
   bool _scanned = false;
@@ -71,87 +65,20 @@ class _ParentPairingScreenState extends State<ParentPairingScreen> {
 
     if (!mounted) return;
 
-    final nameController = TextEditingController();
-    String? validationError;
-
-    final childName = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Thêm trẻ em mới'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Nhập tên trẻ em để liên kết thiết bị.',
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameController,
-                    autofocus: true,
-                    maxLength: 100,
-                    textCapitalization:
-                    TextCapitalization.words,
-                    decoration: InputDecoration(
-                      labelText: 'Tên trẻ em',
-                      hintText: 'Ví dụ: Bé An',
-                      border: const OutlineInputBorder(),
-                      errorText: validationError,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: const Text('Hủy'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final name = nameController.text.trim();
-
-                    if (name.isEmpty) {
-                      setDialogState(() {
-                        validationError =
-                        'Vui lòng nhập tên trẻ em.';
-                      });
-                      return;
-                    }
-
-                    Navigator.of(dialogContext).pop(name);
-                  },
-                  child: const Text('Xác nhận'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+    final account = await Navigator.of(context).push<Map<String, String>>(
+      MaterialPageRoute(builder: (_) => const ChildAccountScreen()),
     );
-
-    nameController.dispose();
-
     if (!mounted) return;
-
-    if (childName == null) {
+    if (account == null) {
       await _resumeScanner();
       return;
     }
-
-    await _confirmPairing(
-      qrData: code,
-      childName: childName,
-    );
+    await _confirmPairing(qrData: code, account: account);
   }
 
   Future<void> _confirmPairing({
     required String qrData,
-    required String childName,
+    required Map<String, String> account,
   }) async {
     if (_processing) return;
 
@@ -161,20 +88,14 @@ class _ParentPairingScreenState extends State<ParentPairingScreen> {
     });
 
     try {
-      await _api.post(
-        'Pairing/confirm',
-        body: {
-          'qrData': qrData,
-          'childName': childName,
-        },
-      );
+      await _api.post('Pairing/confirm', body: {'qrData': qrData, ...account});
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Đã liên kết thiết bị cho $childName.',
+            'Đã tạo tài khoản và liên kết thiết bị cho ${account['childName']}.',
           ),
         ),
       );
@@ -211,29 +132,20 @@ class _ParentPairingScreenState extends State<ParentPairingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ghép thiết bị Child'),
-      ),
+      appBar: AppBar(title: const Text('Ghép thiết bị Child')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Icon(
-            Icons.qr_code_scanner,
-            size: 64,
-            color: Color(0xFF6254D9),
-          ),
+          const Icon(Icons.qr_code_scanner, size: 64, color: Color(0xFF6254D9)),
           const SizedBox(height: 12),
           const Text(
             'Quét mã QR trên thiết bị Child',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Sau khi quét, nhập tên trẻ em để hoàn tất liên kết.',
+            'Sau khi quét, đặt tên đăng nhập và mật khẩu riêng cho con.',
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -242,19 +154,14 @@ class _ParentPairingScreenState extends State<ParentPairingScreen> {
             height: 300,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(18),
-              child: MobileScanner(
-                controller: _scanner,
-                onDetect: _onDetect,
-              ),
+              child: MobileScanner(controller: _scanner, onDetect: _onDetect),
             ),
           ),
 
           const SizedBox(height: 24),
           const Text(
             'Hoặc nhập mã ghép thủ công',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 10),
 
@@ -273,24 +180,16 @@ class _ParentPairingScreenState extends State<ParentPairingScreen> {
             onPressed: _processing
                 ? null
                 : () {
-              _showChildNameDialog(
-                _codeController.text,
-              );
-            },
+                    _showChildNameDialog(_codeController.text);
+                  },
             icon: _processing
                 ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-              ),
-            )
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.link),
-            label: Text(
-              _processing
-                  ? 'Đang liên kết...'
-                  : 'Xác nhận liên kết',
-            ),
+            label: Text(_processing ? 'Đang liên kết...' : 'Xác nhận liên kết'),
           ),
 
           if (_error != null) ...[
