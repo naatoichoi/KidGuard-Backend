@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Include="$(BackendRoot)/Controllers/ScreenTimeController.cs" Link="ScreenTimeController.cs" />
     <Compile Include="$(BackendRoot)/DTOs/SyncAppUsageDto.cs" Link="SyncAppUsageDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/AppLockStatusDto.cs" Link="AppLockStatusDto.cs" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />

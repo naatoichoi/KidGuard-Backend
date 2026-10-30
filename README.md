@@ -29,6 +29,8 @@ Mở `https://greatorangetower88.conveyor.cloud/swagger/index.html` để xem v�
 
 Thử `Auth/register-parent` → `Auth/login` → lấy OTP qua email → `Auth/verify-otp`. Sao chép `accessToken`, bấm **Authorize**, dán token không thêm chữ Bearer. API Parent/Child vẫn kiểm tra vai trò và quyền sở hữu; không có cơ chế bỏ qua đăng nhập. Đo chuyển động và đổi giao diện là chức năng Flutter cục bộ nên không có API riêng.
 
+API bổ sung trong nhóm **ScreenTime**: `GET /api/ScreenTime/app-lock/{deviceId}?packageName=com.google.android.youtube`. Endpoint yêu cầu JWT Parent/Child đúng thiết bị, trả `shouldBlock: true`, `action: BLOCK_APP` nếu ứng dụng đã hết giới hạn APP theo dữ liệu đồng bộ ngày UTC hiện tại. Nếu còn thời gian hoặc không có giới hạn APP đang bật thì trả `shouldBlock: false`, `action: ALLOW_APP`. Việc được duyệt thêm giờ được tính vào thời gian cho phép. `NO_LIMIT` có thời gian còn lại là null, không phải 0. Đây là quyết định backend để Android thực thi; không xác nhận điện thoại đã khóa. API giới hạn tổng và toàn bộ endpoint cũ vẫn giữ nguyên.
+
 ## Chạy Flutter
 
 ```powershell

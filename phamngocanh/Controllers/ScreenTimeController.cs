@@ -1,12 +1,14 @@
 ﻿
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using phamngocanh.Data;
 using phamngocanh.DTOs;
 using phamngocanh.Models;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace phamngocanh.Controllers
 {
@@ -543,6 +545,59 @@ namespace phamngocanh.Controllers
                 deviceId,
                 usageDate = selectedDate.ToString("yyyy-MM-dd"),
                 limits = results
+            });
+        }
+
+        [HttpGet("app-lock/{deviceId:int}")]
+        [Authorize(Roles = "Parent,Child")]
+        [EndpointSummary("Chặn riêng ứng dụng khi hết thời gian")]
+        [EndpointDescription("Nhập deviceId và packageName. Dựa trên thời gian đã đồng bộ hôm nay (UTC), trả shouldBlock=true và action=BLOCK_APP khi ứng dụng hết giờ. Đây là quyết định cho dịch vụ Android thực thi, không phải xác nhận điện thoại đã khóa. Không thay thế API giới hạn tổng. Khi được duyệt thêm giờ hoặc tắt/xóa giới hạn, trả ALLOW_APP nếu còn thời gian hoặc không còn giới hạn APP.")]
+        [ProducesResponseType(typeof(AppLockStatusDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetAppLockStatus(int deviceId,
+            [FromQuery] string? packageName)
+        {
+            var package = packageName?.Trim();
+            if (string.IsNullOrWhiteSpace(package) || package.Length > 255 ||
+                !System.Text.RegularExpressions.Regex.IsMatch(package,
+                    @"\A[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)*\z"))
+            {
+                return BadRequest(new { message = "Nhập packageName Android hợp lệ, ví dụ com.google.android.youtube." });
+            }
+
+            // Reuse the existing authorization, daily usage and approved-extension calculation.
+            // The old endpoint and its response contract remain unchanged.
+            var result = await GetLimitStatus(deviceId, null);
+            if (result is not OkObjectResult ok) return result;
+            var payload = JsonSerializer.SerializeToElement(ok.Value);
+            var matches = payload.GetProperty("limits").EnumerateArray()
+                .Where(limit => limit.GetProperty("limitType").GetString() == "APP" &&
+                    string.Equals(limit.GetProperty("packageName").GetString(), package,
+                        StringComparison.OrdinalIgnoreCase)).ToArray();
+            // Prefer an exhausted rule if older data contains multiple enabled APP rules.
+            var selected = matches.OrderBy(limit => limit.GetProperty("remainingMinutes").GetDouble())
+                .ThenBy(limit => limit.GetProperty("limitId").GetInt32()).FirstOrDefault();
+            var hasLimit = matches.Length > 0;
+            var status = hasLimit ? selected.GetProperty("status").GetString()! : "NO_LIMIT";
+            var blocked = status == "EXCEEDED";
+            return Ok(new AppLockStatusDto
+            {
+                DeviceId = deviceId,
+                PackageName = hasLimit ? selected.GetProperty("packageName").GetString()! : package,
+                UsageDate = payload.GetProperty("usageDate").GetString()!,
+                ShouldBlock = blocked,
+                Action = blocked ? "BLOCK_APP" : "ALLOW_APP",
+                Status = status,
+                LimitId = hasLimit ? selected.GetProperty("limitId").GetInt32() : null,
+                UsedMinutes = hasLimit ? selected.GetProperty("usedMinutes").GetDouble() : null,
+                RemainingMinutes = hasLimit ? selected.GetProperty("remainingMinutes").GetDouble() : null,
+                EffectiveLimitMinutes = hasLimit ? selected.GetProperty("effectiveLimitMinutes").GetInt64() : null,
+                Message = blocked ? "Ứng dụng đã hết thời gian; máy trẻ cần hiển thị màn hình chặn."
+                    : hasLimit ? "Ứng dụng còn thời gian sử dụng."
+                    : "Ứng dụng không có giới hạn APP đang bật."
             });
         }
 

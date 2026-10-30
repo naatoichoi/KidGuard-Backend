@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using phamngocanh.Controllers;
 using phamngocanh.Data;
 using phamngocanh.Models;
+using phamngocanh.DTOs;
 using Xunit;
 
 public class ScreenTimeStatusTests
@@ -99,5 +100,75 @@ public class ScreenTimeStatusTests
         await Seed(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(), "APP", 60);
         var denied = Assert.IsType<ObjectResult>(await Controller(scope, "other-parent").GetLimitStatus(1, null));
         Assert.Equal(403, denied.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(30, false, "NORMAL")]
+    [InlineData(48, false, "WARNING")]
+    [InlineData(60, true, "EXCEEDED")]
+    [InlineData(90, true, "EXCEEDED")]
+    public async Task AppLockReturnsBlockOnlyAtExpiry(long seconds, bool block, string status)
+    {
+        using var provider = Services(); using var scope = provider.CreateScope();
+        await Seed(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(), "APP", seconds);
+        var result = Assert.IsType<OkObjectResult>(await Controller(scope, "child", "Child")
+            .GetAppLockStatus(1, "com.example.video"));
+        var payload = Assert.IsType<AppLockStatusDto>(result.Value);
+        Assert.Equal(block, payload.ShouldBlock);
+        Assert.Equal(block ? "BLOCK_APP" : "ALLOW_APP", payload.Action);
+        Assert.Equal(status, payload.Status);
+        Assert.Equal(1, payload.LimitId);
+    }
+
+    [Fact]
+    public async Task ExpiredAppDoesNotBlockAnotherAppAndDisabledRuleAllowsAgain()
+    {
+        using var provider = Services(); using var scope = provider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await Seed(db, "APP", 60);
+        var controller = Controller(scope);
+        var other = Assert.IsType<AppLockStatusDto>(Assert.IsType<OkObjectResult>(
+            await controller.GetAppLockStatus(1, "com.example.study")).Value);
+        Assert.False(other.ShouldBlock);
+        Assert.Equal("NO_LIMIT", other.Status);
+        Assert.Null(other.RemainingMinutes);
+        (await db.ScreenTimeLimits.SingleAsync()).IsEnabled = false;
+        await db.SaveChangesAsync();
+        var disabled = Assert.IsType<AppLockStatusDto>(Assert.IsType<OkObjectResult>(
+            await controller.GetAppLockStatus(1, "com.example.video")).Value);
+        Assert.False(disabled.ShouldBlock);
+        Assert.Equal("NO_LIMIT", disabled.Status);
+    }
+
+    [Fact]
+    public async Task AppLockUnlocksAfterApprovedExtraTimeAndChecksOwnership()
+    {
+        using var provider = Services(); using var scope = provider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await Seed(db, "APP", 60);
+        var denied = Assert.IsType<ObjectResult>(await Controller(scope, "other-parent")
+            .GetAppLockStatus(1, "com.example.video"));
+        Assert.Equal(403, denied.StatusCode);
+        Assert.IsType<NotFoundObjectResult>(await Controller(scope).GetAppLockStatus(999, "com.example.video"));
+        db.TimeRequests.Add(new TimeRequest { Id = 1, ChildId = 1, DeviceId = 1,
+            ScreenTimeLimitId = 1, RequestedMinutes = 2, Status = "APPROVED" });
+        db.TimeExtensions.Add(new TimeExtension { TimeRequestId = 1, ScreenTimeLimitId = 1,
+            ExtraMinutes = 2, EffectiveDate = DateTime.UtcNow.Date });
+        await db.SaveChangesAsync();
+        var unlocked = Assert.IsType<AppLockStatusDto>(Assert.IsType<OkObjectResult>(
+            await Controller(scope).GetAppLockStatus(1, "com.example.video")).Value);
+        Assert.False(unlocked.ShouldBlock);
+        Assert.Equal("ALLOW_APP", unlocked.Action);
+        Assert.Equal(2, unlocked.RemainingMinutes);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("not an android package")]
+    public async Task AppLockRejectsMissingOrInvalidPackage(string? package)
+    {
+        using var provider = Services(); using var scope = provider.CreateScope();
+        Assert.IsType<BadRequestObjectResult>(await Controller(scope).GetAppLockStatus(1, package));
     }
 }
