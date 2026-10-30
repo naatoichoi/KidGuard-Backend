@@ -550,8 +550,6 @@ namespace phamngocanh.Controllers
 
         [HttpGet("app-lock/{deviceId:int}")]
         [Authorize(Roles = "Parent,Child")]
-        [EndpointSummary("Chặn riêng ứng dụng khi hết thời gian")]
-        [EndpointDescription("Nhập deviceId và packageName. Dựa trên thời gian đã đồng bộ hôm nay (UTC), trả shouldBlock=true và action=BLOCK_APP khi ứng dụng hết giờ. Đây là quyết định cho dịch vụ Android thực thi, không phải xác nhận điện thoại đã khóa. Không thay thế API giới hạn tổng. Khi được duyệt thêm giờ hoặc tắt/xóa giới hạn, trả ALLOW_APP nếu còn thời gian hoặc không còn giới hạn APP.")]
         [ProducesResponseType(typeof(AppLockStatusDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

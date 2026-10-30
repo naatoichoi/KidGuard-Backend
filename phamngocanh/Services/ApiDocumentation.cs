@@ -11,24 +11,7 @@ public sealed class ApiDocumentation : IOpenApiDocumentTransformer
     {
         document.Info.Title = "phamngocanh - KidGuard API";
         document.Info.Version = "v1";
-        document.Info.Description = """
-            API quản lý điện thoại trẻ em — Phạm Ngọc Anh.
-
-            **Cách thử:** đăng ký tại `Auth/register-parent` → đăng nhập tại `Auth/login`
-            → lấy OTP trong email → gọi `Auth/verify-otp` → sao chép `accessToken`
-            → bấm **Authorize**, dán token (không thêm chữ Bearer).
-
-            Tài khoản Parent dùng API phụ huynh; tài khoản Child dùng API trẻ.
-            Ghép thiết bị qua Pairing, sau đó dùng childId/deviceId thực tế từ phản hồi API.
-            API có biểu tượng khóa yêu cầu JWT đúng quyền và đúng quan hệ sở hữu.
-            Try it out / Execute thực hiện thao tác thật trên dữ liệu.
-
-            Các nhóm: tài khoản, OTP, sinh trắc học, hồ sơ; trẻ và thiết bị;
-            ghép QR; dashboard; danh sách ứng dụng; CRUD giới hạn;
-            đồng bộ/báo cáo thời gian; xin và duyệt thêm giờ; vị trí; thông báo.
-            Đo chuyển động và tùy chỉnh giao diện được thực hiện cục bộ trong Flutter,
-            không có endpoint backend riêng.
-            """;
+        document.Info.Description = null;
         // Keep requests on the same public host, including a changed Conveyor URL.
         document.Servers = [new OpenApiServer { Url = "/" }];
         document.Components ??= new OpenApiComponents();
