@@ -1,6 +1,6 @@
 # phamngocanh2380600070 — Flutter quản lý điện thoại trẻ em
 
-Backend ASP.NET Core ở ../phamngocanh. Mã backend đã được sửa trực tiếp; thư mục backend-review chứa bản đối chiếu và bộ kiểm thử liên kết với mã backend thật.
+Thư mục phamngocanh2380600070 chứa ứng dụng Flutter; thư mục ../phamngocanh chứa backend. Bộ kiểm thử backend và cấu hình triển khai nằm tại ../backend-review và ../deploy. Xem README.md ở gốc repository để chạy cả hai phần.
 
 ## Luồng tài khoản đã thống nhất
 
@@ -50,7 +50,7 @@ flutter test
 flutter build apk --debug --dart-define=API_BASE_URL=https://YOUR_PUBLIC_API/api
 ```
 
-Không dùng URL ví dụ nguyên văn. URL mặc định đã cập nhật theo Conveyor của nhóm: https://tallaquaboat3.conveyor.cloud/api. Theo cách thầy hướng dẫn bài thực hành 6, nhóm tiếp tục dùng Conveyor; giữ máy tính, backend Visual Studio và Access Over Internet hoạt động. Nếu Conveyor đổi URL, trên cả hai máy mở Máy chủ → dán Internet URL mới vào Link backend → Kiểm tra và lưu → đăng nhập lại. Không cần build lại APK; URL được lưu riêng trên mỗi máy. Client yêu cầu HTTPS và chặn localhost/dải IPv4 riêng phổ biến.
+Không dùng URL ví dụ nguyên văn. URL mặc định đã cập nhật theo Conveyor của nhóm: https://greatorangetower88.conveyor.cloud/api. Theo cách thầy hướng dẫn bài thực hành 6, nhóm tiếp tục dùng Conveyor; giữ máy tính, backend Visual Studio và Access Over Internet hoạt động. Nếu Conveyor đổi URL, trên cả hai máy mở Máy chủ → dán Internet URL mới vào Link backend → Kiểm tra và lưu → đăng nhập lại. Không cần build lại APK; URL được lưu riêng trên mỗi máy. Client yêu cầu HTTPS và chặn localhost/dải IPv4 riêng phổ biến.
 
 Bản đồ đã chuyển sang Flutter Map + OpenStreetMap, không cần khóa Google Maps. Cần Internet để tải các ô bản đồ. Có dự phòng OpenTopoMap (© OpenStreetMap contributors, SRTM; CC-BY-SA), ghi nguồn và cache theo HTTP headers; không tải sẵn hàng loạt. Địa chỉ được tra bằng Android Geocoder, lưu cùng tọa độ trên backend. Nếu không tra được địa chỉ, vẫn giữ điểm ghim/GPS và báo rõ thiếu địa chỉ.
 
@@ -66,7 +66,7 @@ Bản đồ đã chuyển sang Flutter Map + OpenStreetMap, không cần khóa G
 
 ## Triển khai thay Conveyor
 
-Đã chuẩn bị deploy/Dockerfile, Compose SQL Server + API + Caddy HTTPS, mẫu .env và script xuất gói không chứa cấu hình bí mật. Xem deploy/README.md. Cần VPS/domain và thông tin SMTP thật để triển khai; chưa có dịch vụ Internet mới được tạo.
+Ở gốc repository có deploy/Dockerfile, Compose SQL Server + API + Caddy HTTPS và mẫu .env. Xem ../deploy/README.md. Cần VPS/domain và thông tin SMTP thật để triển khai; chưa có dịch vụ Internet mới được tạo.
 
 Program.cs backend có /health (200 khi kết nối DB và đã áp dụng migration), chỉ tin proxy được cấu hình Proxy:KnownAddress và lệnh --migrate dành cho bước triển khai rõ ràng. Startup bình thường không tự sửa schema. Không chạy migrate trên dữ liệu đang có khi chưa sao lưu.
 
@@ -79,6 +79,6 @@ Program.cs backend có /health (200 khi kết nối DB và đã áp dụng migra
 - Tên project Flutter: phamngocanh2380600070.
 - Bản APK debug ở build/app/outputs/flutter-apk/app-debug.apk. Release hiện vẫn dùng debug signing, phục vụ chạy thử nội bộ.
 
-Kiểm thử backend: dotnet test backend-review/BackendReview.Tests.csproj. Nếu backend ở đường dẫn khác, truyền -p:BackendRoot=<đường dẫn>. Kiểm thử Android: chạy ./gradlew.bat :app:testDebugUnitTest trong android.
+Kiểm thử backend: tại gốc repository chạy dotnet test backend-review/BackendReview.Tests.csproj. Kiểm thử Android: chạy ./gradlew.bat :app:testDebugUnitTest trong android.
 
 Nguồn API nền tảng: https://developer.android.com/reference/android/app/admin/DevicePolicyManager và https://developer.android.com/reference/android/accessibilityservice/AccessibilityService.

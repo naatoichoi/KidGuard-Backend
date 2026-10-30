@@ -1,5 +1,0 @@
-﻿bin/
-obj/
-*.csproj.user
-appsettings.Local.json
-secrets.json

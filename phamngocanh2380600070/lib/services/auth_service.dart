@@ -27,7 +27,65 @@ class AuthService {
       authenticated: false,
       body: {'userName': userName.trim(), 'code': code.trim()},
     );
-    if (data is! Map) throw const ApiException('Phản hồi OTP không hợp lệ.');
+    return persistSession(data);
+  }
+
+  Future<String> loginBiometric({
+    required String userName,
+    required String deviceId,
+    required String secret,
+  }) async {
+    final data = await _api.post(
+      'Auth/login-biometric',
+      authenticated: false,
+      body: {
+        'userName': userName.trim(),
+        'deviceId': deviceId,
+        'secret': secret,
+      },
+    );
+    return persistSession(data);
+  }
+
+  Future<void> enrollBiometric({
+    required String deviceId,
+    required String secret,
+  }) async {
+    await _api.post(
+      'Auth/enroll-biometric',
+      body: {'deviceId': deviceId, 'secret': secret},
+    );
+  }
+
+  Future<Map<String, dynamic>> getProfile() async {
+    final data = await _api.get('Auth/profile');
+    if (data is! Map) {
+      throw const ApiException('Hồ sơ không hợp lệ.');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+
+  Future<void> updateProfile({
+    required String fullName,
+    String? email,
+    String? currentPassword,
+    String? newPassword,
+    String? confirmPassword,
+  }) async {
+    await _api.put(
+      'Auth/profile',
+      body: {
+        'fullName': fullName.trim(),
+        'email': email?.trim(),
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      },
+    );
+  }
+
+  Future<String> persistSession(dynamic data) async {
+    if (data is! Map) throw const ApiException('Phản hồi đăng nhập không hợp lệ.');
     final token = data['accessToken'];
     final user = data['user'];
     final roles = user is Map ? user['roles'] : null;

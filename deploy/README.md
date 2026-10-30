@@ -4,19 +4,19 @@
 
 Conveyor cần project Visual Studio đang chạy; phù hợp thử máy nhưng không độc lập với máy cá nhân: https://conveyor.cloud/Home/How_To_Install.
 
-## Chuẩn bị gói từ Windows
+## Cấu trúc source trong repository
 
-Chạy từ project Flutter:
+Repository đã có source phamngocanh/ và deploy/ cùng cấp. Dùng trực tiếp bản clone này để build Docker; không cần chạy script xuất gói. Phần xuất ZIP dưới đây mô tả công cụ của bản phát triển trước, không có trong bản nộp hiện tại.
 
 ```powershell
-./deploy/Export-Backend.ps1
+# Dùng trực tiếp source từ bản clone repository.
 ```
 
 Script tạo ZIP trong build/vps-<thời điểm>.zip, gồm backend và deploy. Không sao chép appsettings hiện tại, User Secrets, bin/obj, file .http hoặc cấu hình Visual Studio. Chỉ có mẫu .env, không có mật khẩu thật. Đây là database mới; không tự chuyển dữ liệu SQL Server trên máy cá nhân.
 
 ## Chạy trên VPS
 
-Giải nén thành hai thư mục backend và deploy cùng cấp. Vào deploy; sao chép .env.example thành .env rồi điền domain thật, mật khẩu database mới, khóa JWT ngẫu nhiên Base64 tối thiểu 32 byte và tài khoản SMTP thật (STARTTLS). Không dùng giá trị mẫu để chạy thật. Bảo vệ .env bằng quyền chỉ chủ sở hữu đọc.
+Dùng thư mục phamngocanh và deploy cùng cấp trong repository; compose đã trỏ context tới ../phamngocanh. Vào deploy; sao chép .env.example thành .env rồi điền domain thật, mật khẩu database mới, khóa JWT ngẫu nhiên Base64 tối thiểu 32 byte và tài khoản SMTP thật (STARTTLS). Không dùng giá trị mẫu để chạy thật. Bảo vệ .env bằng quyền chỉ chủ sở hữu đọc.
 
 ```sh
 cp .env.example .env

@@ -1,6 +1,6 @@
 package com.example.kidguard
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import android.content.Context
@@ -18,7 +18,7 @@ import java.util.concurrent.Executors
 import android.location.Geocoder
 import java.util.Locale
 
-class MainActivity : FlutterActivity(), SensorEventListener {
+class MainActivity : FlutterFragmentActivity(), SensorEventListener {
     private var sink: EventChannel.EventSink? = null
     private val sensors by lazy { getSystemService(Context.SENSOR_SERVICE) as SensorManager }
     private val io = Executors.newSingleThreadExecutor()

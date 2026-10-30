@@ -4,7 +4,7 @@ class ApiConfig {
   ApiConfig._();
   static const defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://tallaquaboat3.conveyor.cloud/api',
+    defaultValue: 'https://greatorangetower88.conveyor.cloud/api',
   );
   static const _storage = FlutterSecureStorage();
   static String _baseUrl = defaultBaseUrl;
@@ -40,7 +40,12 @@ class ApiConfig {
   static Future<void> load() async {
     try {
       final value = await _storage.read(key: 'kidguard_api_base_url');
-      _baseUrl = normalize(value ?? defaultBaseUrl);
+      final saved = value == null ? null : normalize(value);
+      if (saved == 'https://tallaquaboat3.conveyor.cloud/api') {
+        await save(defaultBaseUrl);
+      } else {
+        _baseUrl = saved ?? normalize(defaultBaseUrl);
+      }
     } catch (_) {
       _baseUrl = defaultBaseUrl;
     }

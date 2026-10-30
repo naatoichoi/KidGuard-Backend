@@ -13,6 +13,7 @@ import 'screen_time_limits_screen.dart';
 import 'time_requests_screen.dart';
 import 'child_account_screen.dart';
 import '../common/api_connection_screen.dart';
+import '../common/settings_screen.dart';
 
 class ParentHomeScreen extends StatefulWidget {
   const ParentHomeScreen({super.key});
@@ -535,6 +536,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Cài đặt',
+            onPressed: () => _openScreen(const SettingsScreen()),
+            icon: const Icon(Icons.settings_outlined),
+          ),
           IconButton(
             tooltip: 'Máy chủ',
             onPressed: _changeServer,

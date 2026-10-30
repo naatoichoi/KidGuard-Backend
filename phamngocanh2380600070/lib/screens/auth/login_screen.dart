@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/biometric_login_service.dart';
 import '../child/child_home_screen.dart';
 import '../child/child_pairing_screen.dart';
 import 'otp_screen.dart';
 import 'register_screen.dart';
+import 'session_home.dart';
 import '../common/api_connection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -22,12 +24,48 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _loading = false;
   bool _obscure = true;
+  bool _canBiometric = false;
+  bool _enrolled = false;
+  final _biometric = BiometricLoginService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometric();
+  }
+
+  Future<void> _loadBiometric() async {
+    final enrolled = await _biometric.isEnrolled();
+    final can = await _biometric.canUseBiometrics();
+    final saved = await _biometric.enrolledUserName();
+    if (!mounted) return;
+    setState(() {
+      _enrolled = enrolled;
+      _canBiometric = can;
+      if (saved != null && saved.isNotEmpty) _userName.text = saved;
+    });
+  }
 
   @override
   void dispose() {
     _userName.dispose();
     _password.dispose();
     super.dispose();
+  }
+
+  Future<void> _loginBiometric() async {
+    setState(() => _loading = true);
+    try {
+      final role = await _biometric.login();
+      if (!mounted) return;
+      openSessionHome(context, role);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _login() async {
@@ -192,6 +230,35 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
 
                     const SizedBox(height: 24),
+
+                    if (_enrolled && _canBiometric) ...[
+                      FilledButton.icon(
+                        onPressed: _loading ? null : _loginBiometric,
+                        icon: const Icon(Icons.fingerprint),
+                        label: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Text('Đăng nhập khuôn mặt / vân tay'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Lần đầu đã xác minh OTP. Lần này có thể dùng sinh trắc học.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.black54, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      const Row(
+                        children: [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Text('HOẶC MẬT KHẨU + OTP'),
+                          ),
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     FilledButton(
                       onPressed: _loading ? null : _login,

@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
-    <BackendRoot Condition="'$(BackendRoot)' == ''">$(MSBuildThisFileDirectory)../../phamngocanh</BackendRoot>
+    <BackendRoot Condition="'$(BackendRoot)' == ''">$(MSBuildThisFileDirectory)../phamngocanh</BackendRoot>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
@@ -27,6 +27,14 @@
     <Compile Include="$(BackendRoot)/DTOs/PairingStatusDto.cs" Link="PairingStatusDto.cs" />
     <Compile Include="$(BackendRoot)/DTOs/RefreshChildTokenDto.cs" Link="RefreshChildTokenDto.cs" />
     <Compile Include="$(BackendRoot)/Services/JwtService.cs" Link="JwtService.cs" />
+    <Compile Include="$(BackendRoot)/Services/IEmailService.cs" Link="IEmailService.cs" />
+    <Compile Include="$(BackendRoot)/Controllers/AuthController.cs" Link="AuthController.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/LoginDto.cs" Link="LoginDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/VerifyOtpDto.cs" Link="VerifyOtpDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/EnrollBiometricDto.cs" Link="EnrollBiometricDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/LoginBiometricDto.cs" Link="LoginBiometricDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/UpdateProfileDto.cs" Link="UpdateProfileDto.cs" />
+    <Compile Include="$(BackendRoot)/DTOs/RegisterParentDto.cs" Link="RegisterParentDto.cs" />
     <Compile Remove="ScreenTimeLimitsController.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
     <Compile Include="$(BackendRoot)/Controllers/ScreenTimeLimitsController.cs" Link="ScreenTimeLimitsController.cs" Condition="'$(UseStagedFeatures)' != 'true'" />
     <Compile Remove="PairingController.cs;ConfirmPairingDto.cs" />

@@ -14,6 +14,7 @@ import 'motion_break_screen.dart';
 import 'guard_setup_screen.dart';
 import '../auth/login_screen.dart';
 import '../common/api_connection_screen.dart';
+import '../common/settings_screen.dart';
 
 class ChildHomeScreen extends StatefulWidget {
   const ChildHomeScreen({super.key});
@@ -619,6 +620,13 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
       appBar: AppBar(
         title: const Text('Thiết bị con'),
         actions: [
+          IconButton(
+            tooltip: 'Cài đặt',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+            ),
+            icon: const Icon(Icons.settings_outlined),
+          ),
           IconButton(
             tooltip: 'Đăng xuất',
             onPressed: _logout,

@@ -18,7 +18,7 @@ services:
     networks: [private]
   api:
     build:
-      context: ../backend
+      context: ../phamngocanh
       dockerfile: ../deploy/Dockerfile
     restart: unless-stopped
     depends_on:

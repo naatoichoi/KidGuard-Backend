@@ -1,4 +1,5 @@
 ﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using phamngocanh.Data;
 using phamngocanh.DTOs;
 using phamngocanh.Models;
 using phamngocanh.Services;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -366,20 +368,214 @@ namespace phamngocanh.Controllers
                 });
             }
 
-            // OTP hợp lệ: đánh dấu đã sử dụng
             otpRecord.UsedAt = now;
             await _context.SaveChangesAsync();
+            await _userManager.ResetAccessFailedCountAsync(user);
+            return Ok(await SessionPayload(user, "Đăng nhập thành công."));
+        }
 
-            // Cấp JWT chỉ sau khi OTP hợp lệ
-            string token = await _jwtService.GenerateTokenAsync(user);
+        [HttpPost("enroll-biometric")]
+        [Authorize]
+        public async Task<IActionResult> EnrollBiometric(
+            [FromBody] EnrollBiometricDto dto)
+        {
+            var user = await CurrentUser();
+            if (user == null || !user.IsActive)
+            {
+                return Unauthorized(new { message = "Phiên đăng nhập không hợp lệ." });
+            }
+
+            string deviceId = dto.DeviceId.Trim();
+            var existing = await _context.BiometricCredentials
+                .FirstOrDefaultAsync(c => c.DeviceId == deviceId);
+            DateTime now = DateTime.UtcNow;
+            if (existing == null)
+            {
+                _context.BiometricCredentials.Add(new BiometricCredential
+                {
+                    UserId = user.Id,
+                    DeviceId = deviceId,
+                    SecretHash = HashOtp(user.Id, dto.Secret),
+                    CreatedAt = now
+                });
+            }
+            else
+            {
+                existing.UserId = user.Id;
+                existing.SecretHash = HashOtp(user.Id, dto.Secret);
+                existing.LastUsedAt = null;
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Đã bật đăng nhập vân tay/khuôn mặt cho lần sau." });
+        }
+
+        [HttpPost("login-biometric")]
+        public async Task<IActionResult> LoginBiometric(
+            [FromBody] LoginBiometricDto dto)
+        {
+            var user = await _userManager.FindByNameAsync(dto.UserName.Trim());
+            if (user == null || !user.IsActive)
+            {
+                return Unauthorized(new { message = "Không xác thực được sinh trắc học." });
+            }
+
+            var credential = await _context.BiometricCredentials
+                .FirstOrDefaultAsync(c =>
+                    c.UserId == user.Id &&
+                    c.DeviceId == dto.DeviceId.Trim());
+            if (credential == null)
+            {
+                return Unauthorized(new
+                {
+                    message = "Thiết bị chưa được đăng ký sinh trắc học. Hãy đăng nhập bằng mật khẩu và OTP."
+                });
+            }
+
+            string inputHash = HashOtp(user.Id, dto.Secret);
+            bool valid = CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(credential.SecretHash),
+                Convert.FromHexString(inputHash));
+            if (!valid)
+            {
+                return Unauthorized(new { message = "Không xác thực được sinh trắc học." });
+            }
+
+            credential.LastUsedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            await _userManager.ResetAccessFailedCountAsync(user);
+            return Ok(await SessionPayload(user, "Đăng nhập bằng sinh trắc học thành công."));
+        }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            var user = await CurrentUser();
+            if (user == null)
+            {
+                return Unauthorized(new { message = "Phiên đăng nhập không hợp lệ." });
+            }
 
             var roles = await _userManager.GetRolesAsync(user);
-
-            await _userManager.ResetAccessFailedCountAsync(user);
-
             return Ok(new
             {
-                message = "Đăng nhập thành công.",
+                id = user.Id,
+                userName = user.UserName,
+                fullName = user.FullName,
+                email = user.Email,
+                roles
+            });
+        }
+
+        [HttpPut("profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile(
+            [FromBody] UpdateProfileDto dto)
+        {
+            var user = await CurrentUser();
+            if (user == null || !user.IsActive)
+            {
+                return Unauthorized(new { message = "Phiên đăng nhập không hợp lệ." });
+            }
+
+            string fullName = dto.FullName.Trim();
+            string? email = string.IsNullOrWhiteSpace(dto.Email)
+                ? null
+                : dto.Email.Trim();
+
+            bool isParent = await _userManager.IsInRoleAsync(user, "Parent");
+            if (isParent && string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new { message = "Phụ huynh cần email để nhận OTP." });
+            }
+
+            if (!string.IsNullOrWhiteSpace(email) &&
+                !string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+            {
+                var taken = await _userManager.FindByEmailAsync(email);
+                if (taken != null && taken.Id != user.Id)
+                {
+                    return Conflict(new { message = "Email đã được sử dụng." });
+                }
+            }
+
+            bool changingPassword = !string.IsNullOrWhiteSpace(dto.NewPassword);
+            if (changingPassword)
+            {
+                if (string.IsNullOrWhiteSpace(dto.CurrentPassword))
+                {
+                    return BadRequest(new { message = "Nhập mật khẩu hiện tại để đổi mật khẩu." });
+                }
+
+                var passwordResult = await _userManager.ChangePasswordAsync(
+                    user, dto.CurrentPassword, dto.NewPassword!);
+                if (!passwordResult.Succeeded)
+                {
+                    return BadRequest(new
+                    {
+                        message = "Không đổi được mật khẩu.",
+                        errors = passwordResult.Errors.Select(e => e.Description)
+                    });
+                }
+            }
+
+            user.FullName = fullName;
+            if (email != null)
+            {
+                user.Email = email;
+                user.NormalizedEmail = _userManager.NormalizeEmail(email);
+            }
+
+            var update = await _userManager.UpdateAsync(user);
+            if (!update.Succeeded)
+            {
+                return BadRequest(new
+                {
+                    message = "Không lưu được hồ sơ.",
+                    errors = update.Errors.Select(e => e.Description)
+                });
+            }
+
+            var child = await _context.Children
+                .FirstOrDefaultAsync(c => c.UserId == user.Id);
+            if (child != null)
+            {
+                child.FullName = fullName;
+                await _context.SaveChangesAsync();
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(new
+            {
+                message = "Đã cập nhật hồ sơ.",
+                userName = user.UserName,
+                fullName = user.FullName,
+                email = user.Email,
+                roles
+            });
+        }
+
+        private async Task<ApplicationUser?> CurrentUser()
+        {
+            string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return null;
+            }
+
+            return await _userManager.FindByIdAsync(userId);
+        }
+
+        private async Task<object> SessionPayload(
+            ApplicationUser user,
+            string message)
+        {
+            string token = await _jwtService.GenerateTokenAsync(user);
+            var roles = await _userManager.GetRolesAsync(user);
+            return new
+            {
+                message,
                 accessToken = token,
                 tokenType = "Bearer",
                 expiresInSeconds = int.Parse(
@@ -390,9 +586,9 @@ namespace phamngocanh.Controllers
                     userName = user.UserName,
                     fullName = user.FullName,
                     email = user.Email,
-                    roles = roles
+                    roles
                 }
-            });
+            };
         }
 
         private static string HashOtp(string userId, string otp)

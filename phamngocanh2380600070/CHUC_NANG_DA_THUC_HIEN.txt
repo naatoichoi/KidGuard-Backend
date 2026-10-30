@@ -1,0 +1,142 @@
+BẢNG ĐỐI CHIẾU CHỨC NĂNG ĐÃ THỰC HIỆN VỚI ĐỀ KIỂM TRA
+Đề tài: KidGuard - Ứng dụng quản lý điện thoại trẻ em
+Tên project Flutter trong pubspec.yaml: phamngocanh2380600070
+Ngày tổng hợp: 30/10/2026
+
+1. ĐĂNG KÝ TÀI KHOẢN QUA EMAIL
+- Đăng ký tài khoản phụ huynh bằng họ tên, tên đăng nhập, email,
+  mật khẩu và xác nhận mật khẩu.
+- Kiểm tra dữ liệu nhập và gửi thông tin đăng ký đến backend.
+- Email phụ huynh được dùng để nhận OTP khi đăng nhập.
+- Tài khoản trẻ được thiết lập trong quy trình phụ huynh ghép thiết bị.
+- Bài chọn hình thức đăng ký bằng email; chưa triển khai OAuth2.0.
+- OTP hiện dùng ở bước đăng nhập, không phải bước xác minh email riêng
+  ngay khi đăng ký.
+
+2. ĐĂNG NHẬP BẰNG TÊN ĐĂNG NHẬP + MẬT KHẨU + EMAIL OTP
+- Nhập tên đăng nhập và mật khẩu để yêu cầu gửi OTP qua email.
+- Nhập mã OTP 6 chữ số để hoàn tất đăng nhập và nhận phiên JWT.
+- OTP có thời hạn 5 phút, giới hạn số lần nhập sai và tần suất gửi lại.
+- Với tài khoản trẻ, OTP được gửi đến email phụ huynh đã liên kết.
+- Có đăng xuất và kiểm tra thời hạn phiên đăng nhập.
+- Chức năng bổ sung: sau khi đăng nhập bằng mật khẩu và OTP,
+  phụ huynh có thể bật vân tay/khuôn mặt cho những lần đăng nhập sau.
+  Chức năng này phụ thuộc hỗ trợ sinh trắc học của điện thoại.
+- Khi trình bày yêu cầu bắt buộc của đề, có thể chọn đăng nhập bằng
+  mật khẩu + OTP thay vì dùng đăng nhập sinh trắc học.
+
+3. PHÂN QUYỀN NGƯỜI DÙNG
+- Có hai vai trò nghiệp vụ chính: Parent (phụ huynh) và Child (trẻ em).
+- Mỗi vai trò có màn hình chính và chức năng riêng.
+- Phụ huynh xem thiết bị của con, báo cáo sử dụng, vị trí,
+  quản lý giới hạn và duyệt yêu cầu xin thêm thời gian.
+- Trẻ xem thời gian sử dụng, giới hạn, gửi yêu cầu thêm thời gian,
+  chia sẻ vị trí và sử dụng tính năng nghỉ mắt/vận động.
+- Backend kiểm tra JWT, vai trò và quan hệ phụ huynh - trẻ/thiết bị
+  khi truy cập dữ liệu thuộc quyền quản lý.
+
+4. CÁC CHỨC NĂNG CRUD
+4.1. CRUD đầy đủ đối với giới hạn thời gian sử dụng
+- Create: tạo giới hạn sử dụng cho thiết bị hoặc ứng dụng được chọn.
+- Read: xem danh sách giới hạn của thiết bị.
+- Update: sửa thông tin giới hạn đã tạo.
+- Delete: xóa giới hạn đã tạo.
+- API tương ứng:
+  POST   /api/ScreenTimeLimits
+  GET    /api/ScreenTimeLimits/device/{deviceId}
+  PUT    /api/ScreenTimeLimits/{id}
+  DELETE /api/ScreenTimeLimits/{id}
+
+4.2. Các nghiệp vụ quản lý dữ liệu khác đã triển khai
+- Tạo và xem thông tin trẻ, thiết bị được liên kết.
+- Cập nhật thông tin tài khoản trẻ qua tài khoản phụ huynh.
+- Xem và cập nhật hồ sơ phụ huynh: họ tên, email, đổi mật khẩu.
+- Trẻ tạo yêu cầu xin thêm thời gian và xem trạng thái yêu cầu.
+- Phụ huynh xem yêu cầu đang chờ, chấp nhận hoặc từ chối,
+  xem lịch sử xử lý.
+- Xem thông báo và đánh dấu đã đọc.
+- Các nghiệp vụ trên không được tính là từng bộ CRUD đầy đủ;
+  bộ CRUD đầy đủ minh họa rõ nhất là quản lý giới hạn sử dụng.
+
+5. CHỨC NĂNG SỬ DỤNG THIẾT BỊ DI ĐỘNG
+5.b. Chia sẻ vị trí
+- Thiết bị trẻ xin quyền vị trí, lấy tọa độ và đồng bộ lên backend.
+- Phụ huynh xem vị trí mới nhất và lịch sử vị trí của con trên bản đồ.
+- Hiển thị thông tin vị trí, thời điểm cập nhật; có xử lý quyền truy cập.
+
+5.d. Đo chuyển động
+- Có màn hình "Nghỉ mắt · Vận động 30 giây".
+- Đọc cảm biến gia tốc tuyến tính của điện thoại qua kênh nền tảng Android.
+- Hiển thị độ lớn gia tốc theo đơn vị m/s², tiến độ phiên đo
+  và số giây có chuyển động.
+- Đo trong 30 giây; thông báo kết quả theo thời gian có chuyển động.
+- Dừng phiên đo khi rời màn hình hoặc ứng dụng không còn hoạt động.
+- Bài chọn đo chuyển động, chưa triển khai đo tiếng ồn hoặc áp suất.
+
+5.e. Nhận diện QR
+- Thiết bị trẻ tạo và hiển thị mã QR ghép thiết bị có thời hạn.
+- Thiết bị phụ huynh dùng camera quét QR để liên kết với trẻ.
+- Phụ huynh nhập thông tin tài khoản trẻ trong quá trình xác nhận ghép.
+- Có kiểm tra mã QR và trạng thái ghép thiết bị.
+
+6. TÍNH NĂNG TỰ ĐỀ XUẤT
+- Đề xuất trình bày: "Nghỉ mắt kết hợp vận động 30 giây" trong app
+  quản lý điện thoại trẻ em.
+- Trẻ chủ động bắt đầu phiên nghỉ và vận động nhẹ; app dùng cảm biến
+  để phản hồi mức độ chuyển động thay vì chỉ hiển thị đồng hồ đếm ngược.
+- Phiên nghỉ không tự cộng thêm thời gian sử dụng điện thoại.
+- Đây là tính năng đã triển khai để đề xuất cho mục sáng tạo.
+  Chưa có khảo sát chứng minh các ứng dụng tương ứng hiện tại chưa có;
+  cần bổ sung đối chiếu ứng dụng khác nếu thầy yêu cầu chứng minh tính mới.
+
+7. GIAO DIỆN VÀ KHẢ NĂNG CHẠY TRÊN THIẾT BỊ
+- Giao diện Flutter dùng Material 3, nội dung tiếng Việt.
+- Có trang tổng quan riêng cho phụ huynh và trẻ.
+- Có báo cáo thời gian sử dụng và biểu đồ thống kê.
+- Cài đặt cho phép thay đổi cỡ chữ, màu nền và lưu trên thiết bị.
+- Có màn hình cập nhật hồ sơ và bật/tắt đăng nhập sinh trắc học.
+- Đã build, cài đặt và mở app trên điện thoại OPPO CPH2237
+  và máy ảo Pixel 7 trong phiên kiểm tra hiện tại.
+- Chất lượng "đẹp, dễ dùng" do giảng viên đánh giá;
+  việc cả nhóm chạy được cần xác nhận trên máy của từng thành viên.
+
+8. CÁC CHỨC NĂNG QUẢN LÝ ĐIỆN THOẠI TRẺ EM BỔ SUNG
+- Ghép điện thoại trẻ với tài khoản phụ huynh.
+- Thu thập và đồng bộ thời gian sử dụng điện thoại, ứng dụng.
+- Xem báo cáo sử dụng theo trẻ/thiết bị.
+- Thiết lập giới hạn tổng thời gian và giới hạn ứng dụng.
+- Có cơ chế Android thực thi chặn sử dụng theo quy tắc giới hạn;
+  cần cấp các quyền hệ thống được hướng dẫn trong app.
+- Quy trình xin thêm thời gian và phụ huynh duyệt/từ chối.
+- Thông báo liên quan đến hoạt động quản lý và yêu cầu thời gian.
+
+9. CÔNG NGHỆ, TÊN PROJECT VÀ API CÔNG KHAI
+- Ứng dụng di động được viết bằng Flutter/Dart.
+- Có mã Kotlin tích hợp dịch vụ/quyền/cảm biến Android qua platform channel;
+  giao diện và luồng ứng dụng chính dùng Flutter.
+- Backend ASP.NET Core Web API, cơ sở dữ liệu SQL Server.
+- Tên project Flutter: phamngocanh2380600070, mang tên cá nhân.
+- Thư mục làm việc hiện tại tên kidguard; khi đóng gói nộp bài cần bảo đảm
+  tên thư mục/project nộp đúng quy định tên cá nhân của giảng viên.
+- App gọi API HTTPS công khai, không dùng localhost:
+  https://greatorangetower88.conveyor.cloud/api
+- Backend hiện được đưa ra Internet qua Conveyor; máy chạy backend
+  và tunnel Conveyor cần được duy trì khi demo.
+- Sau khi áp dụng migration bổ sung bảng sinh trắc học, đã kiểm tra:
+  GET /health trả HTTP 200;
+  GET /api/Dashboard/parent khi chưa đăng nhập trả HTTP 401 đúng phân quyền.
+- Chưa xác nhận một VPS chạy thường trực; cần đối chiếu hình thức Conveyor
+  với cách triển khai ở bài thực hành 6 nếu đó là yêu cầu cụ thể của thầy.
+
+10. PHẠM VI XÁC NHẬN
+- Danh sách được đối chiếu từ code Flutter, API backend và các kiểm tra
+  đã thực hiện; không đồng nghĩa mọi luồng đã được kiểm thử thực tế đầy đủ.
+- Các kiểm tra đã đạt trong phiên làm việc: đăng nhập mật khẩu chưa cấp
+  token trước OTP; đăng nhập bằng thông tin sinh trắc học đã đăng ký;
+  cập nhật hồ sơ; lưu giao diện; giữ đăng ký sinh trắc học khi đăng xuất;
+  kiểm tra URL và chuyển link Conveyor cũ sang link mới.
+- Trước khi trình bày nên chạy thử trọn luồng trên hai thiết bị:
+  đăng ký -> mật khẩu + email OTP -> tạo/quét QR -> quản lý giới hạn CRUD
+  -> chia sẻ vị trí -> xin/duyệt thời gian -> đo chuyển động.
+- Không tự kết luận đạt trọn điểm hoặc khẳng định tính năng độc quyền
+  khi chưa có đánh giá của giảng viên và đối chiếu cần thiết.

@@ -1,5 +1,5 @@
 param(
-    [string]$BackendRoot = (Join-Path $PSScriptRoot '../../phamngocanh'),
+    [string]$BackendRoot = 'D:\LTDiDong\KT\phamngocanh\phamngocanh',
     [string]$ExpectedDatabaseName,
     [switch]$Reset
 )

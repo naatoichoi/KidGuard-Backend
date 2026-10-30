@@ -30,6 +30,7 @@ namespace phamngocanh.Data
 
         public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
         public DbSet<DeviceSyncLog> DeviceSyncLogs => Set<DeviceSyncLog>();
+        public DbSet<BiometricCredential> BiometricCredentials => Set<BiometricCredential>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -286,6 +287,15 @@ namespace phamngocanh.Data
                 entity.HasOne(x => x.Device)
                     .WithMany()
                     .HasForeignKey(x => x.DeviceId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            modelBuilder.Entity<BiometricCredential>(entity =>
+            {
+                entity.HasIndex(x => x.DeviceId).IsUnique();
+                entity.HasOne(x => x.User)
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
                     .OnDelete(DeleteBehavior.NoAction);
             });
         }
