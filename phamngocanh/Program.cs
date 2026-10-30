@@ -139,7 +139,8 @@ builder.Services.AddCors(options =>
 });
 
 // 8. OPENAPI
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+    options.AddDocumentTransformer<ApiDocumentation>());
 
 var app = builder.Build();
 
@@ -164,10 +165,19 @@ app.MapGet("/health", async (ApplicationDbContext context) =>
 }).AllowAnonymous();
 
 // 9. MIDDLEWARE
-if (app.Environment.IsDevelopment())
+app.MapOpenApi().AllowAnonymous();
+app.UseSwaggerUI(options =>
 {
-    app.MapOpenApi();
-}
+    options.SwaggerEndpoint("../openapi/v1.json", "phamngocanh - KidGuard API v1");
+    options.DocumentTitle = "phamngocanh - KidGuard API";
+    options.DisplayRequestDuration();
+    options.EnableFilter();
+    options.EnableTryItOutByDefault();
+});
+app.MapGet("/", () => Results.Redirect("/swagger/index.html"))
+    .ExcludeFromDescription().AllowAnonymous();
+app.MapGet("/api", () => Results.Redirect("/swagger/index.html"))
+    .ExcludeFromDescription().AllowAnonymous();
 
 app.UseHttpsRedirection();
 

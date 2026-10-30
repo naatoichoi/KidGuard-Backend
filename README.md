@@ -23,6 +23,12 @@ dotnet run --project phamngocanh/phamngocanh.csproj --urls http://localhost:5269
 
 Backend nghe cổng nội bộ; dùng Conveyor bật Access Over Internet hoặc VPS để app truy cập HTTPS công khai. App không gọi localhost. `/health` trả 200 khi database kết nối được và đã áp dụng đủ migration.
 
+## Swagger để kiểm tra API
+
+Mở `https://greatorangetower88.conveyor.cloud/swagger/index.html` để xem và thử toàn bộ API. Trang gốc `/` và `/api` cũng chuyển tới Swagger. Nếu Conveyor đổi tên miền, giữ đường dẫn `/swagger/index.html` trên tên miền mới.
+
+Thử `Auth/register-parent` → `Auth/login` → lấy OTP qua email → `Auth/verify-otp`. Sao chép `accessToken`, bấm **Authorize**, dán token không thêm chữ Bearer. API Parent/Child vẫn kiểm tra vai trò và quyền sở hữu; không có cơ chế bỏ qua đăng nhập. Đo chuyển động và đổi giao diện là chức năng Flutter cục bộ nên không có API riêng.
+
 ## Chạy Flutter
 
 ```powershell
