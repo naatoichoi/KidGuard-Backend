@@ -1,8 +1,8 @@
-﻿# KidGuard — Backend và Flutter
+# KidGuard — Backend và Flutter
 
 - `phamngocanh/`: ASP.NET Core API, mở bằng Visual Studio qua `phamngocanh.slnx`.
-- `flutter/`: ứng dụng Flutter Android, mở thư mục này bằng Android Studio.
-- `flutter/README.md`: luồng sử dụng, quyền Android và hướng dẫn kiểm thử.
+- `phamngocanh2380600070/`: ứng dụng Flutter Android, mở thư mục này bằng Android Studio.
+- `phamngocanh2380600070/README.md`: luồng sử dụng, quyền Android và hướng dẫn kiểm thử.
 
 ## Cấu hình backend
 
@@ -13,7 +13,7 @@ Sau khi cấu hình SQL Server, áp dụng migration bằng `dotnet run --projec
 ## Chạy Flutter
 
 ```powershell
-cd flutter
+cd phamngocanh2380600070
 flutter pub get
 flutter run
 ```
@@ -23,9 +23,9 @@ Trên cả hai điện thoại, vào Máy chủ → Link backend → dán Intern
 ## Kiểm thử
 
 ```powershell
-dotnet test flutter/backend-review/BackendReview.Tests.csproj
-cd flutter
+dotnet test phamngocanh2380600070/backend-review/BackendReview.Tests.csproj
+cd phamngocanh2380600070
 flutter test
 ```
 
-Dữ liệu database, bản sao lưu, cấu hình riêng và APK không được đưa vào repo. Script `flutter/maintenance/Reset-KidGuardData.ps1` mặc định chỉ kiểm tra; chỉ dùng `-Reset` khi thực sự muốn sao lưu và xóa dữ liệu.
+Dữ liệu database, bản sao lưu, cấu hình riêng và APK không được đưa vào repo. Script `phamngocanh2380600070/maintenance/Reset-KidGuardData.ps1` mặc định chỉ kiểm tra; chỉ dùng `-Reset` khi thực sự muốn sao lưu và xóa dữ liệu.

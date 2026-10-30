@@ -2,9 +2,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:kidguard/config/api_config.dart';
-import 'package:kidguard/services/api_connection_service.dart';
-import 'package:kidguard/services/api_service.dart';
+import 'package:phamngocanh2380600070/config/api_config.dart';
+import 'package:phamngocanh2380600070/services/api_connection_service.dart';
+import 'package:phamngocanh2380600070/services/api_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

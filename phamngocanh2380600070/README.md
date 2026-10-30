@@ -1,4 +1,4 @@
-# KidGuard — Flutter quản lý điện thoại trẻ em
+# phamngocanh2380600070 — Flutter quản lý điện thoại trẻ em
 
 Backend ASP.NET Core ở ../phamngocanh. Mã backend đã được sửa trực tiếp; thư mục backend-review chứa bản đối chiếu và bộ kiểm thử liên kết với mã backend thật.
 
@@ -76,7 +76,7 @@ Program.cs backend có /health (200 khi kết nối DB và đã áp dụng migra
 - Android có kiểm thử ngưỡng khóa tổng, khóa app, thời gian được duyệt thêm/ngày mới và tính timeline không trùng khi chuyển app/tắt màn hình.
 - Flutter có kiểm thử API query, DELETE 204, lỗi 403, URL HTTPS, đăng xuất giữ enrollment, thiếu cảm biến và dừng cảm biến khi ra nền.
 - 21 kiểm thử backend, 18 kiểm thử Flutter và 5 kiểm thử Android đã đạt. Migration địa chỉ đã áp dụng thành công lên SQL Server hiện tại. Các kiểm thử backend dùng Identity thật với EF InMemory; chưa thay thế nghiệm thu SMTP/HTTP giữa hai máy, khóa trên điện thoại thật hoặc VPS/domain thật.
-- Tên project Flutter vẫn là kidguard: cần xác nhận tên cá nhân chính xác trước khi đổi, vì đề chấm sai tên là 0 điểm. Không tự suy đoán tên chỉ từ tên thư mục backend.
+- Tên project Flutter: phamngocanh2380600070.
 - Bản APK debug ở build/app/outputs/flutter-apk/app-debug.apk. Release hiện vẫn dùng debug signing, phục vụ chạy thử nội bộ.
 
 Kiểm thử backend: dotnet test backend-review/BackendReview.Tests.csproj. Nếu backend ở đường dẫn khác, truyền -p:BackendRoot=<đường dẫn>. Kiểm thử Android: chạy ./gradlew.bat :app:testDebugUnitTest trong android.

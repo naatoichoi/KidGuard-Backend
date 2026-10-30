@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kidguard/screens/child/motion_break_screen.dart';
+import 'package:phamngocanh2380600070/screens/child/motion_break_screen.dart';
 
 void main() {
   const channel = EventChannel('kidguard/motion');

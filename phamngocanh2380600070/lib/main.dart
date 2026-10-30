@@ -24,7 +24,7 @@ class KidGuardApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'KidGuard',
+      title: 'phamngocanh2380600070',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const SessionGate(),

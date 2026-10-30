@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:kidguard/services/api_service.dart';
-import 'package:kidguard/services/location_sharing_service.dart';
+import 'package:phamngocanh2380600070/services/api_service.dart';
+import 'package:phamngocanh2380600070/services/location_sharing_service.dart';
 
 Position point(DateTime time) => Position(
   latitude: 21.02867,

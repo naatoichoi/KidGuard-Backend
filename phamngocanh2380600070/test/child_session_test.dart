@@ -1,7 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kidguard/services/auth_service.dart';
-import 'package:kidguard/services/child_auth_service.dart';
+import 'package:phamngocanh2380600070/services/auth_service.dart';
+import 'package:phamngocanh2380600070/services/child_auth_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

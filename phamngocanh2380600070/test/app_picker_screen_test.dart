@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kidguard/screens/parent/app_picker_screen.dart';
+import 'package:phamngocanh2380600070/screens/parent/app_picker_screen.dart';
 
 void main() {
   testWidgets(

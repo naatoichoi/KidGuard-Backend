@@ -24,7 +24,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="KidGuard"
+        android:label="phamngocanh2380600070"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false">
